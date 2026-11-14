@@ -1,0 +1,8 @@
+# Equipment edits use the dedicated server-side edit password, not a user JWT.
+# Existing device-local flows remain public; the function validates the password for every edit.
+[functions.og6-authorize-edit]
+verify_jwt = false
+
+# Device-local archival is guarded by a server-verified admin password and scoped approval token.
+[functions.og6-authorize-archive]
+verify_jwt = false

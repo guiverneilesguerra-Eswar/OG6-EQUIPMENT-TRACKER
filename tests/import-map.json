@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "exceljs": "npm:exceljs@4.4.0",
+    "fflate": "npm:fflate@0.8.2",
+    "../services/tracker": "../services/tracker.ts",
+    "../services/inventoryImportValidation": "../services/inventoryImportValidation.ts",
+    "../services/alarmPolicy": "../services/alarmPolicy.ts",
+    "../services/soundClips": "../services/soundClips.ts",
+    "../services/alertSoundValidation": "../services/alertSoundValidation.ts"
+  }
+}
