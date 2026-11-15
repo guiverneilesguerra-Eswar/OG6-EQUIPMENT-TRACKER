@@ -13,6 +13,7 @@ export const ReceiptActions = memo(function ReceiptActions({ asset, withdrawal, 
   const m = useReceipt(asset, withdrawal, kind); const { colors: c } = useTracker();
   return <View style={styles.actions}>
     <View style={styles.fileRow}><Ionicons name="document-text-outline" size={24} color={c.primary} /><Text style={[styles.filename, { color: c.text }]} selectable>{m.file?.filename || 'PDF RECEIPT'}</Text></View>
+    <Text style={[styles.privacy, { color: c.subtle }]}>A4 portrait · one page · 12-point text. Helvetica retained until a licensed Arial font is supplied.</Text>
     {m.preparing ? <View style={styles.progress}><ActivityIndicator color={c.primary} /><Text style={[styles.message, { color: c.subtle }]}>Preparing PDF…</Text></View> : null}
     <ErrorText message={m.error} />
     {!m.file && !m.preparing ? <Button title="Retry PDF generation" secondary onPress={m.retry} /> : null}

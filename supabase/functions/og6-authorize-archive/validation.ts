@@ -54,8 +54,26 @@ export function parseArchiveRequest(value: unknown) {
     const receiving = optionalText(original.receiving, 'receiving personnel', 200);
     const condition = optionalText(original.condition, 'return condition', 200);
     const remarks = optionalText(original.remarks, 'return remarks');
+    const receivingSignatureAt = optionalDate(original.receivingSignatureAt, 'return signature date');
+    const receivingSignature = original.receivingSignature;
+    if (receivingSignature != null) {
+      if (!returnedAt || !receiving || !receivingSignatureAt || !Array.isArray(receivingSignature) || !receivingSignature.length || receivingSignature.length > 300) throw new RequestError('Invalid receiving personnel signature.');
+      let returnPoints = 0;
+      let usable = false;
+      for (const stroke of receivingSignature) {
+        if (!Array.isArray(stroke) || !stroke.length) throw new RequestError('Invalid receiving personnel signature.');
+        returnPoints += stroke.length;
+        if (stroke.length > 2) usable = true;
+        for (const value of stroke) {
+          const point = record(value);
+          if (typeof point.x !== 'number' || typeof point.y !== 'number' || !Number.isFinite(point.x) || !Number.isFinite(point.y) || point.x < 0 || point.x > 500 || point.y < 0 || point.y > 180 || Object.keys(point).some(key => !['x', 'y'].includes(key))) throw new RequestError('Invalid receiving personnel signature.');
+        }
+      }
+      if (!usable || returnPoints > 15000) throw new RequestError('Return signature is invalid or too large for secure archival.');
+      if (Date.parse(receivingSignatureAt) !== Date.parse(returnedAt)) throw new RequestError('Return signature timestamp does not match the return event.');
+    } else if (receivingSignatureAt) throw new RequestError('Return signature is missing.');
     if (!returnedAt && !activeWithdrawalIds.includes(id)) throw new RequestError('Active withdrawal state is inconsistent.');
-    withdrawal = { id, assetId: asset.id, releaser: text(original.releaser, 'releaser'), receiver: text(original.receiver, 'receiver'), signature, withdrawalAt, dueAt, createdAt: date(original.createdAt, 'transaction creation date'), notes: typeof original.notes === 'string' && original.notes.length <= 10000 ? original.notes : '', ...(returnedAt ? { returnedAt } : {}), ...(returning ? { returning } : {}), ...(receiving ? { receiving } : {}), ...(condition ? { condition } : {}), ...(remarks ? { remarks } : {}) };
+    withdrawal = { id, assetId: asset.id, releaser: text(original.releaser, 'releaser'), receiver: text(original.receiver, 'receiver'), signature, withdrawalAt, dueAt, createdAt: date(original.createdAt, 'transaction creation date'), notes: typeof original.notes === 'string' && original.notes.length <= 10000 ? original.notes : '', ...(returnedAt ? { returnedAt } : {}), ...(returning ? { returning } : {}), ...(receiving ? { receiving } : {}), ...(condition ? { condition } : {}), ...(remarks ? { remarks } : {}), ...(receivingSignature != null ? { receivingSignature, receivingSignatureAt } : {}) };
   }
   // Whitelist the audit snapshot; credentials and tokens are never part of it.
   return { phase: 'authorize' as const, authorizationId, installationId, password, snapshot: { kind, recordId, asset, withdrawal, activeWithdrawalIds } };

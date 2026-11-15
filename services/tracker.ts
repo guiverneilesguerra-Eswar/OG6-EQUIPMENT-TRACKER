@@ -12,6 +12,8 @@ export interface Withdrawal {
   withdrawalAt: string; dueAt: string; createdAt: string; returnedAt?: string;
   returning?: string; receiving?: string; condition?: string; remarks?: string; notes: string;
   deletedAt?: string; alarmAcknowledgedAt?: string;
+  /** Optional for legacy returns; newly recorded returns require this evidence. */
+  receivingSignature?: Signature; receivingSignatureAt?: string;
 }
 export interface Activity { id: string; assetId: string; transactionId?: string; type: 'added' | 'withdrawal' | 'return' | 'edit' | 'archive' | 'alarm-acknowledgement'; person: string; at: string; description: string; authorizationId?: string; withdrawalIds?: string[]; acknowledgementSource?: AcknowledgementSource }
 export interface Notice { id: string; assetId?: string; withdrawalId?: string; type: 'success' | 'due' | 'overdue' | 'error'; priority?: 'critical'; title: string; message: string; at: string; read: boolean; acknowledged: boolean }

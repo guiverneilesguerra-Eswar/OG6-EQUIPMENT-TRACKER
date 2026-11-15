@@ -2,6 +2,8 @@
   "imports": {
     "exceljs": "npm:exceljs@4.4.0",
     "fflate": "npm:fflate@0.8.2",
+    "pdf-lib": "npm:pdf-lib@1.17.1",
+    "../constants/receipt": "../constants/receipt.ts",
     "../services/tracker": "../services/tracker.ts",
     "../services/inventoryImportValidation": "../services/inventoryImportValidation.ts",
     "../services/alarmPolicy": "../services/alarmPolicy.ts",

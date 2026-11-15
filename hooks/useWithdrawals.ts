@@ -16,7 +16,8 @@ export function useWithdrawals() {
   const [withdrawalAt, setWithdrawalAt] = useState(new Date().toISOString()); const [dueAt, setDueAt] = useState(new Date(Date.now() + 86400000).toISOString());
   const [notes, setNotes] = useState(''); const [error, setError] = useState(''); const [detail, setDetail] = useState<Withdrawal | null>(null);
   const [returningWithdrawal, setReturningWithdrawal] = useState<Withdrawal | null>(null);
-  const [returning, setReturning] = useState(''); const [receiving, setReceiving] = useState(''); const [condition, setCondition] = useState(''); const [remarks, setRemarks] = useState('');
+  const [returning, setReturning] = useState(''); const [receiving, setReceivingValue] = useState(''); const [condition, setCondition] = useState(''); const [remarks, setRemarks] = useState('');
+  const [receivingSignature, setReceivingSignatureValue] = useState<Signature>([]); const [returnSignatureSaved, setReturnSignatureSaved] = useState(false);
   const [returnError, setReturnError] = useState(''); const [deleting, setDeleting] = useState<Withdrawal | null>(null);
   const [receiptId, setReceiptId] = useState(''); const [receiptKind, setReceiptKind] = useState<ReceiptKind>('withdrawal');
   const saving = useRef(false);
@@ -36,6 +37,8 @@ export function useWithdrawals() {
   const receiptWithdrawal = tracker.data.withdrawals.find(w => w.id === receiptId && !w.deletedAt);
   const setReceiver = useCallback((value: string) => { setReceiverValue(value); setSignatureValue([]); setSaved(false); }, []);
   const setSignature = useCallback((value: Signature) => { setSignatureValue(value); setSaved(false); }, []);
+  const setReceiving = useCallback((value: string) => { setReceivingValue(value); setReceivingSignatureValue([]); setReturnSignatureSaved(false); }, []);
+  const setReceivingSignature = useCallback((value: Signature) => { setReceivingSignatureValue(value); setReturnSignatureSaved(false); }, []);
   const showReceipt = useCallback((w: Withdrawal, kind: ReceiptKind = w.returnedAt ? 'return' : 'withdrawal') => {
     setOpen(false); setReturningWithdrawal(null); setReceiptKind(kind); setReceiptId(w.id);
   }, []);
@@ -53,16 +56,17 @@ export function useWithdrawals() {
     finally { saving.current = false; }
   }
   const beginReturn = useCallback((w: Withdrawal) => {
-    setReceiptId(''); setOpen(false); setReturningWithdrawal(w); setReturning(''); setReceiving(''); setCondition(''); setRemarks(''); setReturnError('');
+    setReceiptId(''); setOpen(false); setReturningWithdrawal(w); setReturning(''); setReceiving(''); setCondition(''); setRemarks(''); setReceivingSignatureValue([]); setReturnSignatureSaved(false); setReturnError('');
   }, []);
   async function confirmReturn() {
     if (!returningWithdrawal || saving.current) return;
     saving.current = true; setReturnError('');
     try {
-      const recorded = await tracker.returnEquipment(returningWithdrawal.id, { returning, receiving, condition, remarks });
+      if (!returnSignatureSaved) throw new Error('Receiving personnel signature is required. Please sign and save it.');
+      const recorded = await tracker.returnEquipment(returningWithdrawal.id, { returning, receiving, condition, remarks, receivingSignature });
       showReceipt(recorded, 'return');
     } catch (e) { setReturnError(e instanceof Error ? e.message : 'Unable to save the return. Please try again.'); }
     finally { saving.current = false; }
   }
-  return { ...tracker, query, setQuery, filter, setFilter, rows, open, setOpen, source, setSource, assetQuery, setAssetQuery, assetId, setAssetId, name, setName, serial, setSerial, manualNotes, setManualNotes, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, notes, setNotes, error, detail, setDetail, returningWithdrawal, setReturningWithdrawal, returning, setReturning, receiving, setReceiving, condition, setCondition, remarks, setRemarks, returnError, deleting, setDeleting, available, asset, submit, beginReturn, confirmReturn, receiptWithdrawal, receiptKind, setReceiptKind, showReceipt, closeDialog };
+  return { ...tracker, query, setQuery, filter, setFilter, rows, open, setOpen, source, setSource, assetQuery, setAssetQuery, assetId, setAssetId, name, setName, serial, setSerial, manualNotes, setManualNotes, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, notes, setNotes, error, detail, setDetail, returningWithdrawal, setReturningWithdrawal, returning, setReturning, receiving, setReceiving, receivingSignature, setReceivingSignature, returnSignatureSaved, setReturnSignatureSaved, condition, setCondition, remarks, setRemarks, returnError, deleting, setDeleting, available, asset, submit, beginReturn, confirmReturn, receiptWithdrawal, receiptKind, setReceiptKind, showReceipt, closeDialog };
 }

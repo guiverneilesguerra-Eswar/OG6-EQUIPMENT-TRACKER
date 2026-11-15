@@ -30,6 +30,7 @@ export function WithdrawalForms({ model: m }: Props) {
       </View>
       <Field label="Returning personnel *" value={m.returning} onChangeText={m.setReturning} placeholder="Full name" />
       <Field label="Receiving personnel *" value={m.receiving} onChangeText={m.setReceiving} placeholder="Full name" />
+      <SignaturePad label="Receiving personnel signature on return *" receiver={m.receiving} value={m.receivingSignature} onChange={m.setReceivingSignature} saved={m.returnSignatureSaved} onSave={() => m.setReturnSignatureSaved(true)} readOnly={m.busy} />
       <Field label="Equipment condition *" value={m.condition} onChangeText={m.setCondition} placeholder="e.g. Good, complete, operational" />
       <Field label="Remarks" value={m.remarks} onChangeText={m.setRemarks} multiline placeholder="Additional observations" />
       <ErrorText message={m.returnError} />
