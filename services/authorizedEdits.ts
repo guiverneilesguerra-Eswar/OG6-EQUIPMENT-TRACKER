@@ -61,6 +61,6 @@ export async function authorizeAssetEdit(before: Asset, changes: AssetChanges, p
     || asset.archivedAt || typeof asset.updatedAt !== 'string' || !Number.isFinite(Date.parse(asset.updatedAt))) {
     throw new Error('Invalid edit authorization response. No local records were changed.');
   }
-  return { id: asset.id, name: asset.name, serial: asset.serial, notes: asset.notes,
+  return { ...before, id: asset.id, name: asset.name, serial: asset.serial, notes: asset.notes,
     createdAt: asset.createdAt, updatedAt: asset.updatedAt };
 }

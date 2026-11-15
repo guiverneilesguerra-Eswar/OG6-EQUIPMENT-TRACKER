@@ -15,10 +15,10 @@ const StatusMetric = memo(function StatusMetric({ title, value, icon, accent, ba
   const iconSize = fourColumns ? layout.metricIcon * scale : layout.compactMetricIcon;
   return <LinearGradient colors={[background, c.metricEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.metric, fourColumns ? styles.metricQuarter : styles.metricHalf, { borderColor: accent, shadowColor: accent, minHeight: fourColumns ? layout.metricHeight * scale : layout.compactMetricHeight, padding: density.cardPadding, gap: fourColumns ? density.iconGap : density.headerGap }]}>
     {fourColumns ? <>
-      <View style={[styles.metricIcon, { backgroundColor: accent, width: iconSize, height: iconSize, borderRadius: radius.md * scale }]}><Ionicons name={icon} size={40 * scale} color={c.white} /></View>
+      <View style={[styles.metricIcon, { backgroundColor: accent, width: iconSize, height: iconSize, borderRadius: radius.md * scale }]}><Ionicons name={icon} size={40 * scale} color={c.onAccent} /></View>
       <View style={styles.metricCopy}><Text style={[styles.metricLabel, { color: c.text, fontSize: Math.max(type.meta, consoleType.metricLabel * scale), lineHeight: Math.max(type.small, spacing.lg * scale) }]}>{title}</Text><Text adjustsFontSizeToFit numberOfLines={1} style={[styles.metricValue, { color: c.text, fontSize: consoleType.metric * scale, lineHeight: consoleType.metric * scale }]}>{value}</Text></View>
     </> : <>
-      <View style={styles.compactMetricTop}><View style={[styles.metricIcon, { backgroundColor: accent, width: iconSize, height: iconSize, borderRadius: radius.sm }]}><Ionicons name={icon} size={28} color={c.white} /></View><Text adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={[styles.metricValue, styles.compactMetricValue, { color: c.text }]}>{value}</Text></View>
+      <View style={styles.compactMetricTop}><View style={[styles.metricIcon, { backgroundColor: accent, width: iconSize, height: iconSize, borderRadius: radius.sm }]}><Ionicons name={icon} size={28} color={c.onAccent} /></View><Text adjustsFontSizeToFit minimumFontScale={0.6} numberOfLines={1} style={[styles.metricValue, styles.compactMetricValue, { color: c.text }]}>{value}</Text></View>
       <Text style={[styles.metricLabel, styles.compactMetricLabel, { color: c.text }]}>{title.replace('\n', ' ')}</Text>
     </>}
   </LinearGradient>;

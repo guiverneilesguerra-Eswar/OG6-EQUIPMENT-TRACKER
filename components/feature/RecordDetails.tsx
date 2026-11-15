@@ -7,6 +7,7 @@ import { Badge, Chips, Empty } from '@/components/ui/Controls';
 import { ReceiptActions } from './ReceiptActions';
 import { ReceiptKind } from '@/services/receipts';
 import { SignaturePad } from './SignaturePad';
+import { remainingQuantity } from '@/services/movements';
 import { type, leading, density } from '@/constants/theme';
 
 interface DetailProps { asset?: Asset | null; withdrawal?: Withdrawal | null; onClose: () => void }
@@ -25,7 +26,7 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
       {a.archivedAt ? line('Equipment archived', formatDate(a.archivedAt)) : null}
       {canOperate && (a.archivedAt || w?.deletedAt) ? line('Administrator authorization reference', archiveEvent?.authorizationId) : null}
       {w && canOperate ? <>
-        {line('Transaction reference', w.id)}{line('Releaser', w.releaser)}{line('Receiver', w.receiver)}
+        {line('Batch / transaction reference', w.reference || w.id)}{line('Individual withdrawal ID', w.id)}{line('Quantity withdrawn', String(w.quantity ?? 1))}{line('Quantity outstanding', String(remainingQuantity(w)))}{line('Releaser', w.releaser)}{line('Receiver', w.receiver)}
         {line('Withdrawal date', formatDate(w.withdrawalAt))}{line('Due date', formatDate(w.dueAt))}
         {line('Recorded at', formatDate(w.createdAt))}{line('Purpose / notes', w.notes)}
         {w.deletedAt ? line('Withdrawal archived', formatDate(w.deletedAt)) : null}
@@ -34,6 +35,10 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
         {w.returnedAt ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
         <ReceiptActions key={`${w.id}-${w.returnedAt ? receiptKind : 'withdrawal'}`} asset={a} withdrawal={w} kind={w.returnedAt ? receiptKind : 'withdrawal'} />
         {w.returnedAt ? <>{line('Returned at', formatDate(w.returnedAt))}{line('Returning personnel', w.returning)}{line('Receiving personnel', w.receiving)}{line('Return condition', w.condition)}{line('Return remarks', w.remarks)}</> : null}
+      </> : null}
+      {canOperate && data.returnRecords?.some(r => w ? r.withdrawalId === w.id : r.assetId === a?.id) ? <>
+        <Text style={[styles.section, { color: c.text }]}>INDIVIDUAL RETURN HISTORY</Text>
+        <FlatList scrollEnabled={false} data={data.returnRecords.filter(r => w ? r.withdrawalId === w.id : r.assetId === a?.id)} keyExtractor={r => r.id} renderItem={({ item: r }) => <View style={[styles.history, { borderColor: c.border }]}><Text selectable style={[styles.value, { color: c.text }]}>{r.reference} · QTY {r.quantity}</Text><Text style={[styles.label, { color: c.subtle }]}>{formatDate(r.at)}</Text><Text style={[styles.value, { color: c.text }]}>Returning: {r.returning} · Receiving: {r.receiving}</Text><Text style={[styles.value, { color: c.text }]}>{r.condition} · {r.remarks || 'No remarks'}</Text></View>} />
       </> : null}
       {acknowledgements.length ? <>
         <Text style={[styles.section, { color: c.text }]}>ALARM ACKNOWLEDGEMENT HISTORY</Text>
@@ -48,8 +53,8 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
         <Text style={[styles.section, { color: c.text }]}>TRANSACTION HISTORY</Text>
         <FlatList scrollEnabled={false} data={history} keyExtractor={item => item.id} ListEmptyComponent={<Empty title="No equipment movements" message="" />} renderItem={({ item }) => <View style={[styles.history, { borderColor: c.border }]}>
           <Text selectable style={[styles.value, { color: c.text }]}>{item.receiver}</Text>
-          <Text selectable style={[styles.label, { color: c.subtle }]}>{item.id}</Text>
-          <Text style={[styles.label, { color: c.subtle }]}>{formatDate(item.withdrawalAt)}</Text>
+          <Text selectable style={[styles.label, { color: c.subtle }]}>{item.reference || item.id} · {item.id}</Text>
+          <Text style={[styles.label, { color: c.subtle }]}>{formatDate(item.withdrawalAt)} · {item.quantity ?? 1} withdrawn · {remainingQuantity(item)} outstanding</Text>
           <Badge status={item.deletedAt ? 'ARCHIVED' : item.returnedAt ? 'RETURNED' : status(item.assetId)} />
           {item.returnedAt ? <Text style={[styles.label, { color: c.subtle }]}>Returned {formatDate(item.returnedAt)}</Text> : null}
           {item.deletedAt ? <Text style={[styles.label, { color: c.subtle }]}>Archived {formatDate(item.deletedAt)} · Original withdrawal retained</Text> : null}

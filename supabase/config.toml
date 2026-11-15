@@ -6,3 +6,7 @@ verify_jwt = false
 # Device-local archival is guarded by a server-verified admin password and scoped approval token.
 [functions.og6-authorize-archive]
 verify_jwt = false
+
+# Device-local restore and name management verify the administrator password on every action.
+[functions.og6-authorize-maintenance]
+verify_jwt = false

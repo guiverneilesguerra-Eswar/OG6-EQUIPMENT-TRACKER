@@ -18,7 +18,7 @@ const tabs: Record<string, { label: string; compactLabel?: string; icon: keyof t
 };
 export function TabNavigation({ state, navigation }: BottomTabBarProps) {
   const { commandLayout, compactLandscape, consoleScale: scale, sidebarWidth, width } = useResponsive();
-  const { colors: c } = useTracker();
+  const { colors: c, resolvedTheme } = useTracker();
   const insets = useSafeAreaInsets();
   const items = state.routes.map((route, index) => {
     const tab = tabs[route.name];
@@ -28,12 +28,12 @@ export function TabNavigation({ state, navigation }: BottomTabBarProps) {
       onPress={() => { const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true }); if (!selected && !event.defaultPrevented) navigation.navigate(route.name); }}
       onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
       style={({ pressed }) => [commandLayout ? styles.sideTab : styles.bottomTab, commandLayout ? { minHeight: 48, paddingHorizontal: compactLandscape ? spacing.sm : density.cardPadding, gap: density.iconGap } : null, { backgroundColor: selected ? commandLayout ? c.action : c.blueBg : c.transparent, borderColor: selected ? commandLayout ? c.borderBright : c.primary : c.transparent, opacity: pressed ? 0.65 : 1, transform: [{ scale: pressed ? 0.985 : 1 }], shadowColor: c.shadow, shadowOpacity: selected && commandLayout ? 0.25 : 0 }]}>
-      <Ionicons name={tab.icon} size={commandLayout ? Math.max(22, 32 * scale) : 20} color={selected ? commandLayout ? c.white : c.primary : commandLayout ? c.headerText : c.subtle} />
-      <Text numberOfLines={commandLayout ? 1 : 2} adjustsFontSizeToFit minimumFontScale={0.85} style={[commandLayout ? styles.sideText : styles.bottomText, { fontSize: commandLayout ? compactLandscape ? type.micro : 20 * scale : type.tiny, color: selected ? commandLayout ? c.white : c.primary : commandLayout ? c.headerText : c.subtle }]}>{!commandLayout && width < 480 ? tab.compactLabel || tab.label : tab.label}</Text>
+      <Ionicons name={tab.icon} size={commandLayout ? Math.max(22, 32 * scale) : 20} color={selected ? commandLayout ? c.onAction : c.primary : commandLayout ? c.headerText : c.subtle} />
+      <Text numberOfLines={commandLayout ? 1 : 2} adjustsFontSizeToFit minimumFontScale={0.85} style={[commandLayout ? styles.sideText : styles.bottomText, { fontSize: commandLayout ? compactLandscape ? type.micro : 20 * scale : type.tiny, color: selected ? commandLayout ? c.onAction : c.primary : commandLayout ? c.headerText : c.subtle }]}>{!commandLayout && width < 480 ? tab.compactLabel || tab.label : tab.label}</Text>
     </Pressable>;
   });
   if (commandLayout) return <View style={[styles.sidebar, { width: sidebarWidth + insets.left, paddingLeft: spacing.sm + insets.left, backgroundColor: c.headerBg, borderColor: c.headerBorder, paddingTop: insets.top + (density.cardPadding), paddingBottom: insets.bottom + spacing.sm }]}>
-    <View pointerEvents="none" style={styles.wallpaper}><Image source={require('@/assets/command-sidebar.webp')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center bottom" transition={200} /><LinearGradient colors={[c.headerBg, c.transparent, c.heroOverlay]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} /></View>
+    {resolvedTheme === 'dark' ? <View pointerEvents="none" style={[styles.wallpaper, { opacity: 0.12 }]}><Image source={require('@/assets/command-sidebar.webp')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center bottom" transition={200} /><LinearGradient colors={[c.headerBg, c.transparent, c.heroOverlay]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} /></View> : null}
     <ScrollView style={styles.sideScroll} contentContainerStyle={styles.sideContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.sideBrand, { paddingBottom: compactLandscape ? spacing.sm : density.sectionGap }]}><CommandEmblem compact={compactLandscape} scale={scale * 0.8} /></View>
       {items}

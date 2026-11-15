@@ -1,11 +1,12 @@
 import { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
-import { palettes, type } from '@/constants/theme';
+import { type } from '@/constants/theme';
+import { useTracker } from '@/hooks/useTracker';
 
 interface EmblemProps { compact?: boolean; scale?: number }
 export const CommandEmblem = memo(function CommandEmblem({ compact = false, scale = 1 }: EmblemProps) {
-  const c = palettes.dark;
+  const { colors: c } = useTracker();
   return <View accessibilityLabel="OG6 communications command emblem" style={[styles.emblem, compact ? styles.compact : { width: 132 * scale, height: 148 * scale }]}>
     <Svg width="100%" height="100%" viewBox="0 0 132 148" style={StyleSheet.absoluteFill}>
       <Path d="M66 5 L119 20 L116 82 Q113 119 66 140 Q19 119 16 82 L13 20 Z" fill={c.headerSurface} stroke={c.gold} strokeWidth="2.5" />
@@ -15,7 +16,7 @@ export const CommandEmblem = memo(function CommandEmblem({ compact = false, scal
       <Circle cx="66" cy="40" r="3" fill={c.headerAccent} />
       <Path d="M66 17 L68 22 L74 22 L70 26 L71 32 L66 29 L61 32 L62 26 L58 22 L64 22 Z M33 57 L35 61 L40 61 L36 65 L37 70 L33 67 L29 70 L30 65 L26 61 L31 61 Z M99 57 L101 61 L106 61 L102 65 L103 70 L99 67 L95 70 L96 65 L92 61 L97 61 Z M66 113 L68 117 L73 117 L69 121 L70 126 L66 123 L62 126 L63 121 L59 117 L64 117 Z" fill={c.gold} />
     </Svg>
-    <Text style={[styles.name, { color: c.white }, compact ? styles.compactName : { top: 82 * scale, fontSize: type.section * scale }]}>OG6</Text>
+    <Text style={[styles.name, { color: c.text }, compact ? styles.compactName : { top: 82 * scale, fontSize: type.section * scale }]}>OG6</Text>
   </View>;
 });
 const styles = StyleSheet.create({ emblem: { width: 132, height: 148, alignItems: 'center', justifyContent: 'center', gap: 4 }, compact: { width: 56, height: 64, gap: 0 }, name: { position: 'absolute', top: 82, fontSize: type.section, fontWeight: '800', letterSpacing: 1 }, compactName: { top: 35, fontSize: type.micro } });

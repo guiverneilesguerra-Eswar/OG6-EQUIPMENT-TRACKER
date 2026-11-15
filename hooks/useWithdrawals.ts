@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { useTracker } from './useTracker';
 import { Signature, Withdrawal } from '@/services/tracker';
+import { randomUUID } from 'expo-crypto';
 import { ReceiptKind } from '@/services/receipts';
 export function useWithdrawals() {
   const tracker = useTracker();
@@ -19,12 +20,12 @@ export function useWithdrawals() {
   const [returning, setReturning] = useState(''); const [receiving, setReceiving] = useState(''); const [condition, setCondition] = useState(''); const [remarks, setRemarks] = useState('');
   const [returnError, setReturnError] = useState(''); const [deleting, setDeleting] = useState<Withdrawal | null>(null);
   const [receiptId, setReceiptId] = useState(''); const [receiptKind, setReceiptKind] = useState<ReceiptKind>('withdrawal');
-  const saving = useRef(false);
+  const saving = useRef(false); const requestId = useRef(`TX-${randomUUID()}`);
   const asset = useCallback((id: string) => tracker.data.assets.find(a => a.id === id), [tracker.data.assets]);
   const rows = useMemo(() => tracker.data.withdrawals.filter(w => {
     if (w.deletedAt) return false;
     const a = asset(w.assetId);
-    const matches = `${a?.name} ${a?.serial} ${w.receiver} ${w.withdrawalAt} ${w.dueAt}`.toLowerCase().includes(query.toLowerCase());
+    const matches = `${a?.name} ${a?.serial} ${w.reference || w.id} ${w.receiver} ${w.withdrawalAt} ${w.dueAt}`.toLowerCase().includes(query.toLowerCase());
     if (!matches) return false;
     if (filter === 'ALL') return true;
     if (filter === 'RETURNED') return Boolean(w.returnedAt);
@@ -45,8 +46,8 @@ export function useWithdrawals() {
     saving.current = true; setError('');
     try {
       if (!saved) throw new Error('Receiver signature is required. Please save the signature.');
-      const recorded = await tracker.withdraw({ assetId, manual: source === 'MANUAL ENTRY', name, serial, manualNotes, releaser, receiver, signature, withdrawalAt, dueAt, notes });
-      showReceipt(recorded, 'withdrawal');
+      const recorded = await tracker.withdraw({ requestId: requestId.current, assetId, manual: source === 'MANUAL ENTRY', name, serial, manualNotes, releaser, receiver, signature, withdrawalAt, dueAt, notes });
+      showReceipt(recorded, 'withdrawal'); requestId.current = `TX-${randomUUID()}`;
       setAssetId(''); setName(''); setSerial(''); setManualNotes(''); setReleaser(''); setReceiver(''); setNotes('');
       setWithdrawalAt(new Date().toISOString()); setDueAt(new Date(Date.now() + 86400000).toISOString());
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save the transaction. Please try again.'); }

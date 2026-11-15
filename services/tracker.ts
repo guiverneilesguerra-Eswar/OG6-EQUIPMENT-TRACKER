@@ -3,8 +3,9 @@ import { normalizeAudioPreferences } from './audioPreferences';
 import { normalizeAudioSelections } from './audioConfiguration';
 import type { AuthorizedAlertSound } from './alertSoundValidation';
 import type { AcknowledgementSource } from './alarmAcknowledgements';
+import type { BatchRecord, NameDirectory, ReturnRecord } from './movements';
 
-export interface Asset { id: string; name: string; serial: string; notes: string; createdAt: string; updatedAt: string; archivedAt?: string }
+export interface Asset { id: string; name: string; serial: string; notes: string; createdAt: string; updatedAt: string; archivedAt?: string; quantity?: number }
 export interface Point { x: number; y: number }
 export type Signature = Point[][];
 export interface Withdrawal {
@@ -12,11 +13,13 @@ export interface Withdrawal {
   withdrawalAt: string; dueAt: string; createdAt: string; returnedAt?: string;
   returning?: string; receiving?: string; condition?: string; remarks?: string; notes: string;
   deletedAt?: string; alarmAcknowledgedAt?: string;
+  batchId?: string; reference?: string; quantity?: number; returnedQuantity?: number;
+  equipmentSnapshot?: { name: string; serial: string; description: string };
 }
-export interface Activity { id: string; assetId: string; transactionId?: string; type: 'added' | 'withdrawal' | 'return' | 'edit' | 'archive' | 'alarm-acknowledgement'; person: string; at: string; description: string; authorizationId?: string; withdrawalIds?: string[]; acknowledgementSource?: AcknowledgementSource }
+export interface Activity { id: string; assetId: string; transactionId?: string; type: 'added' | 'withdrawal' | 'return' | 'edit' | 'archive' | 'alarm-acknowledgement' | 'maintenance'; person: string; at: string; description: string; authorizationId?: string; withdrawalIds?: string[]; acknowledgementSource?: AcknowledgementSource }
 export interface Notice { id: string; assetId?: string; withdrawalId?: string; type: 'success' | 'due' | 'overdue' | 'error'; priority?: 'critical'; title: string; message: string; at: string; read: boolean; acknowledged: boolean }
 export interface Settings {
-  theme: 'light' | 'dark'; notificationVolume: number; alarmVolume: number;
+  theme: 'light' | 'dark' | 'system'; notificationVolume: number; alarmVolume: number;
   alarmEnabled?: boolean; audioPreferencesVersion?: number;
   notificationSound?: AuthorizedAlertSound | null; alarmSound?: AuthorizedAlertSound | null;
   /** Legacy shared selection, preserved for migration only. */
@@ -24,7 +27,7 @@ export interface Settings {
   warningHours: number; role: 'operator' | 'viewer';
 }
 export interface InventoryImportAudit { id: string; filename: string; at: string; importedAssetIds: string[]; duplicatesSkipped: number; invalidRows: number; totalProcessed: number }
-export interface TrackerData { inventoryImports?: InventoryImportAudit[]; version: number; assets: Asset[]; withdrawals: Withdrawal[]; activities: Activity[]; notices: Notice[]; settings: Settings; alertKeys?: string[] }
+export interface TrackerData { batches?: BatchRecord[]; returnRecords?: ReturnRecord[]; nameDirectory?: NameDirectory; inventoryImports?: InventoryImportAudit[]; version: number; assets: Asset[]; withdrawals: Withdrawal[]; activities: Activity[]; notices: Notice[]; settings: Settings; alertKeys?: string[] }
 const key = 'og6.tracker.v1';
 export const emptyData = (): TrackerData => ({
   version: 1, assets: [], withdrawals: [], activities: [], notices: [],
@@ -48,7 +51,7 @@ export async function loadData(): Promise<TrackerData> {
 }
 export async function saveData(data: TrackerData) { await AsyncStorage.setItem(key, JSON.stringify(data)); }
 export function uid(prefix: string) { return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`; }
-export function isActive(w: Withdrawal) { return !w.returnedAt && !w.deletedAt; }
+export function isActive(w: Withdrawal) { return !w.returnedAt && !w.deletedAt && (w.quantity ?? 1) > (w.returnedQuantity ?? 0); }
 export function assetStatus(assetId: string, withdrawals: Withdrawal[], now = Date.now()): 'IN' | 'OUT' | 'OVERDUE' {
   const w = withdrawals.find(x => x.assetId === assetId && isActive(x));
   return w ? (new Date(w.dueAt).getTime() < now ? 'OVERDUE' : 'OUT') : 'IN';

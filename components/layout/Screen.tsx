@@ -17,7 +17,7 @@ import { spacing, radius, type, leading, layout, consoleType, density } from '@/
 
 interface Props { title: string; icon?: keyof typeof Ionicons.glyphMap; action?: ReactNode; children: ReactNode; dashboard?: boolean }
 export function Screen({ title, icon = 'radio-outline', action, children, dashboard = false }: Props) {
-  const { colors: c, data, now, loaded, error, retry } = useTracker();
+  const { colors: c, resolvedTheme, data, now, loaded, error, retry } = useTracker();
   const { tablet, commandLayout, compactLandscape, consoleScale: scale, sidebarWidth, pagePadding } = useResponsive();
   const router = useRouter();
   const [notifications, setNotifications] = useState(false);
@@ -25,23 +25,23 @@ export function Screen({ title, icon = 'radio-outline', action, children, dashbo
   const heroHeight = compactLandscape ? layout.compactHeroHeight : Math.round(layout.heroHeight * scale);
   const brandSize = commandLayout ? compactLandscape ? consoleType.brandCompact : consoleType.brand * scale : tablet ? consoleType.brandMedium : consoleType.brandCompact;
   return <SafeAreaView edges={commandLayout ? ['top', 'bottom', 'left', 'right'] : ['top', 'left', 'right']} style={[styles.root, { backgroundColor: c.headerBg, paddingLeft: sidebarWidth }]}>
-    <StatusBar style="light" />
+    <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
     <FlatList style={[styles.scroll, { backgroundColor: c.background }]} data={[]} renderItem={() => null} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" ListHeaderComponent={<>
       <View style={[styles.hero, { backgroundColor: c.headerBg }, commandLayout ? { minHeight: heroHeight } : null]}>
-        <Image source={require('@/assets/command-network.webp')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="right center" transition={200} />
+        {resolvedTheme === 'dark' ? <Image source={require('@/assets/command-network.webp')} style={[StyleSheet.absoluteFill, { opacity: 0.12 }]} contentFit="cover" contentPosition="right center" transition={200} /> : null}
         <LinearGradient pointerEvents="none" colors={[c.headerSurface, c.heroOverlay, c.headerBg]} locations={[0, 0.62, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroContent, { paddingHorizontal: pagePadding, paddingTop: density.cardPadding }, commandLayout ? { minHeight: heroHeight } : null]}>
           <View style={styles.brandRow}>
             {!commandLayout ? <CommandEmblem compact /> : null}
             <View style={styles.brandCopy}>
-              <Text numberOfLines={commandLayout ? 1 : 2} adjustsFontSizeToFit minimumFontScale={0.85} style={[styles.brandTitle, { color: c.white, fontSize: brandSize }]}><Text>OG6 </Text><Text style={{ color: c.headerAccent }}>EQUIPMENT TRACKER</Text></Text>
+              <Text numberOfLines={commandLayout ? 1 : 2} adjustsFontSizeToFit minimumFontScale={0.85} style={[styles.brandTitle, { color: c.text, fontSize: brandSize }]}><Text>OG6 </Text><Text style={{ color: c.headerAccent }}>EQUIPMENT TRACKER</Text></Text>
               <Text numberOfLines={commandLayout ? 1 : 3} style={[styles.brandSubtitle, { color: c.headerText, fontSize: compactLandscape ? type.micro : commandLayout ? consoleType.metricLabel * scale : type.caption }]}>C4S Inventory and Equipment Monitoring System</Text>
             </View>
           </View>
           <View style={[styles.consoleRow, styles.mobileConsole]}>
             <View style={[styles.clock, { backgroundColor: c.headerSurface, borderColor: c.headerBorder }, commandLayout && !compactLandscape ? { width: 304 * scale, minHeight: 48, paddingHorizontal: density.cardPadding } : styles.mobileClock]}>
               <Ionicons name="calendar-outline" size={compactLandscape || !commandLayout ? 20 : 28 * scale} color={c.headerText} />
-              <View style={styles.clockCopy}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.time, { color: c.white }]}>{formatDate(now, commandLayout && !compactLandscape)}</Text><Text style={[styles.timezone, { color: c.headerText }]}>Asia/Manila (UTC+08:00)</Text></View>
+              <View style={styles.clockCopy}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={[styles.time, { color: c.text }]}>{formatDate(now, commandLayout && !compactLandscape)}</Text><Text style={[styles.timezone, { color: c.headerText }]}>Asia/Manila (UTC+08:00)</Text></View>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={`Notifications, ${unread} unread`} onPress={() => setNotifications(true)} style={({ pressed }) => [styles.bell, { backgroundColor: c.headerSurface, borderColor: c.headerBorder, width: 48, height: 48, opacity: pressed ? 0.65 : 1 }]}>
               <Ionicons name="notifications-outline" size={compactLandscape || !commandLayout ? 24 : 30 * scale} color={c.headerText} />
@@ -49,7 +49,7 @@ export function Screen({ title, icon = 'radio-outline', action, children, dashbo
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Open workspace settings" onPress={() => router.push('/(tabs)/settings')} style={({ pressed }) => [styles.profile, { backgroundColor: c.headerSurface, borderColor: c.headerBorder, minHeight: 48, opacity: pressed ? 0.65 : 1 }, compactLandscape || !commandLayout ? styles.profileCompact : null]}>
               <View><Ionicons name="person-circle-outline" size={compactLandscape || !commandLayout ? 30 : 36 * scale} color={c.headerText} /><View style={[styles.profileDot, { backgroundColor: c.signalGreen, borderColor: c.headerBg }]} /></View>
-              {commandLayout && !compactLandscape ? <View><Text style={[styles.profileTitle, { color: c.white }]}>{data.settings.role.toUpperCase()}</Text><Text style={[styles.systemText, { color: c.headerText }]}>DEVICE LOCAL</Text></View> : null}
+              {commandLayout && !compactLandscape ? <View><Text style={[styles.profileTitle, { color: c.text }]}>{data.settings.role.toUpperCase()}</Text><Text style={[styles.systemText, { color: c.headerText }]}>DEVICE LOCAL</Text></View> : null}
               {commandLayout && !compactLandscape ? <Ionicons name="chevron-down-outline" size={16} color={c.headerText} /> : null}
             </Pressable>
           </View>

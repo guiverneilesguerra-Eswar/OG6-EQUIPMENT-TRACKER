@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Asset, Withdrawal, formatDate, manilaParts } from './tracker';
 import { palettes } from '@/constants/theme';
+import { deliverFile } from './portableFiles';
 
 export type ReceiptKind = 'withdrawal' | 'return';
 export interface ReceiptFile { filename: string; bytes: Uint8Array; base64: string }
@@ -68,7 +69,10 @@ export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: 
   };
   addPage();
   field('Transaction status at this event', kind === 'return' ? 'RETURNED / EQUIPMENT IN' : 'WITHDRAWN / EQUIPMENT OUT');
-  field('Equipment name', asset.name); field('Serial / Product ID', asset.serial); field('Asset ID', asset.id);
+  field('Batch / transaction reference', withdrawal.reference || withdrawal.id);
+  field('Equipment name', withdrawal.equipmentSnapshot?.name || asset.name); field('Serial / Product ID', withdrawal.equipmentSnapshot?.serial || asset.serial); field('Asset ID', asset.id);
+  field('Quantity withdrawn', String(withdrawal.quantity ?? 1));
+  if (kind === 'return') field('Total quantity returned', String(withdrawal.returnedQuantity ?? withdrawal.quantity ?? 1));
   field('Releaser', withdrawal.releaser); field('Original receiver', withdrawal.receiver);
   field('Withdrawal date and time (PHT)', formatDate(withdrawal.withdrawalAt));
   field('Due date and time (PHT)', formatDate(withdrawal.dueAt));
@@ -117,12 +121,14 @@ function downloadWeb(receipt: ReceiptFile) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 async function saveNative(receipt: ReceiptFile, permanent: boolean) {
-  const root = permanent ? FileSystem.documentDirectory : FileSystem.cacheDirectory;
+  const fs = FileSystem as unknown as { File?: new (uri: string) => { create: (options: { overwrite: boolean; intermediates: boolean }) => void; write: (bytes: Uint8Array) => void }; Paths?: { document: string | { uri: string }; cache: string | { uri: string } }; documentDirectory?: string | null; cacheDirectory?: string | null; makeDirectoryAsync?: (uri: string, o: { intermediates: boolean }) => Promise<void>; writeAsStringAsync?: (uri: string, value: string, o: { encoding: 'base64' }) => Promise<void> };
+  const path = permanent ? fs.Paths?.document : fs.Paths?.cache;
+  const root = typeof path === 'string' ? path : path?.uri || (permanent ? fs.documentDirectory : fs.cacheDirectory);
   if (!root) throw new Error('File storage is unavailable on this device.');
-  const folder = `${root}og6-receipts/`;
-  await FileSystem.makeDirectoryAsync(folder, { intermediates: true });
-  const uri = `${folder}${receipt.filename}`;
-  await FileSystem.writeAsStringAsync(uri, receipt.base64, { encoding: FileSystem.EncodingType.Base64 });
+  const folder = `${root.replace(/\/$/, '')}/og6-receipts/`; const uri = `${folder}${receipt.filename}`;
+  if (fs.File) { const file = new fs.File(uri); file.create({ overwrite: true, intermediates: true }); file.write(receipt.bytes); }
+  else if (fs.writeAsStringAsync && fs.makeDirectoryAsync) { await fs.makeDirectoryAsync(folder, { intermediates: true }); await fs.writeAsStringAsync(uri, receipt.base64, { encoding: 'base64' }); }
+  else throw new Error('PDF file storage is not supported in this build.');
   return uri;
 }
 export async function downloadReceipt(receipt: ReceiptFile): Promise<ReceiptDelivery> {

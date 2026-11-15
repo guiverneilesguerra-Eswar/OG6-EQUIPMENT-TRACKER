@@ -5,8 +5,12 @@ import { TrackerProvider } from '@/contexts/TrackerContext';
 import { AudioProvider } from '@/contexts/AudioContext';
 import { useAdaptiveOrientation } from '@/hooks/useAdaptiveOrientation';
 import { CommandAlertProvider } from '@/contexts/CommandAlertContext';
-import { palettes } from '@/constants/theme';
+import { useTracker } from '@/hooks/useTracker';
+function ThemedNavigator() {
+  const { colors } = useTracker();
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}><Stack.Screen name="index" /><Stack.Screen name="(tabs)" /></Stack>;
+}
 export default function RootLayout() {
   useAdaptiveOrientation();
-  return <AlertProvider><SafeAreaProvider><TrackerProvider><AudioProvider><CommandAlertProvider><Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palettes.dark.background } }}><Stack.Screen name="index" /><Stack.Screen name="(tabs)" /></Stack></CommandAlertProvider></AudioProvider></TrackerProvider></SafeAreaProvider></AlertProvider>;
+  return <AlertProvider><SafeAreaProvider><TrackerProvider><AudioProvider><CommandAlertProvider><ThemedNavigator /></CommandAlertProvider></AudioProvider></TrackerProvider></SafeAreaProvider></AlertProvider>;
 }

@@ -136,4 +136,20 @@ export async function discardUncommittedAlertSound(selection: AuthorizedAlertSou
   const uri = nativeUri(selection);
   if (fs.File) new fs.File(uri).delete(); else if (fs.deleteAsync) await fs.deleteAsync(uri, { idempotent: true });
 }
+// Restore uses fresh IDs and never overwrites or deletes committed audio.
+export async function stageRestoredAlertSound(original: AuthorizedAlertSound, bytes: Uint8Array): Promise<AuthorizedAlertSound> {
+  const format = validateAlertSoundBytes(original.filename, bytes);
+  if (format.extension !== original.extension || bytes.length !== original.sizeBytes) throw new Error('Backup audio metadata does not match its file.');
+  const selection: AuthorizedAlertSound = { ...original, id: randomUUID(), ...format };
+  let uri = ''; let probe: Audio.Sound | null = null; let stored = false;
+  try {
+    if (Platform.OS === 'web') { const copy = new Uint8Array(bytes); uri = URL.createObjectURL(new Blob([copy.buffer], { type: selection.mimeType })); }
+    else { uri = nativeUri(selection); if (fs.File) { const f = new fs.File(uri); f.create({ overwrite: false, intermediates: true }); f.write(bytes); } else if (fs.writeAsStringAsync) { const copy = new Uint8Array(bytes); await fs.writeAsStringAsync(uri, encode(copy.buffer), { encoding: 'base64' }); } else throw new Error('Audio storage is unavailable.'); stored = true; }
+    const result = await loadDecodedAlertSound(uri); probe = result.sound;
+    selection.durationMillis = validateAlertSoundDuration(result.status.isLoaded ? result.status.durationMillis : undefined);
+    if (Platform.OS === 'web') { const copy = new Uint8Array(bytes); await browserClip(selection.id, 'put', new Blob([copy.buffer], { type: selection.mimeType })); stored = true; }
+    return selection;
+  } catch (e) { if (stored) await discardUncommittedAlertSound(selection).catch(() => {}); throw e; }
+  finally { if (probe) await probe.unloadAsync().catch(() => {}); if (Platform.OS === 'web' && uri) URL.revokeObjectURL(uri); }
+}
 export async function openAlertSoundReference() { await Linking.openURL(alertSoundReference); }

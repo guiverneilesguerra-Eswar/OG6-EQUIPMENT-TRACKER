@@ -1,12 +1,13 @@
 import Tabs from 'expo-router/tabs';
 import { TabNavigation } from '@/components/layout/TabNavigation';
-import { palettes } from '@/constants/theme';
+import { useTracker } from '@/hooks/useTracker';
 
 export default function TabLayout() {
+  const { colors } = useTracker();
   return (
     <Tabs
       backBehavior="history"
-      screenOptions={{ headerShown: false, lazy: true, sceneStyle: { backgroundColor: palettes.dark.background } }}
+      screenOptions={{ headerShown: false, lazy: true, sceneStyle: { backgroundColor: colors.background } }}
       tabBar={props => <TabNavigation {...props} />}
     >
       <Tabs.Screen name="index" options={{ title: 'HOME' }} />

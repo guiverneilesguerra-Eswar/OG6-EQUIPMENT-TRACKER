@@ -7,6 +7,7 @@ function text(value: unknown, label: string, max = 200): string { if (typeof val
 function date(value: unknown, label: string): string { const result = text(value, label, 64); if (!Number.isFinite(Date.parse(result))) throw new RequestError(`Invalid ${label}.`); return result; }
 function optionalDate(value: unknown, label: string) { return value == null ? undefined : date(value, label); }
 function optionalText(value: unknown, label: string, max = 10000) { return value == null || value === '' ? undefined : text(value, label, max); }
+function optionalQuantity(value: unknown, minimum: number) { if (value === undefined) return undefined; if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < minimum || value > 1000000) throw new RequestError('Invalid equipment quantity.'); return value; }
 export function parseArchiveRequest(value: unknown) {
   const body = record(value);
   const authorizationId = text(body.authorizationId, 'authorization reference', 36);
@@ -25,7 +26,8 @@ export function parseArchiveRequest(value: unknown) {
   const recordId = text(input.recordId, 'record reference');
   const source = record(input.asset);
   const archivedAt = optionalDate(source.archivedAt, 'asset archive date');
-  const asset = { id: text(source.id, 'asset reference'), name: text(source.name, 'equipment name'), serial: text(source.serial, 'serial/product ID'), notes: text(source.notes, 'equipment notes', 10000), createdAt: date(source.createdAt, 'asset creation date'), updatedAt: date(source.updatedAt, 'asset update date'), ...(archivedAt ? { archivedAt } : {}) };
+  const assetQuantity = optionalQuantity(source.quantity, 1);
+  const asset = { ...(assetQuantity !== undefined ? { quantity: assetQuantity } : {}), id: text(source.id, 'asset reference'), name: text(source.name, 'equipment name'), serial: text(source.serial, 'serial/product ID'), notes: text(source.notes, 'equipment notes', 10000), createdAt: date(source.createdAt, 'asset creation date'), updatedAt: date(source.updatedAt, 'asset update date'), ...(archivedAt ? { archivedAt } : {}) };
   if (!Array.isArray(input.activeWithdrawalIds) || input.activeWithdrawalIds.length > 100 || input.activeWithdrawalIds.some(id => typeof id !== 'string' || !id || id.length > 200)) throw new RequestError('Invalid withdrawal state.');
   const activeWithdrawalIds = input.activeWithdrawalIds as string[];
   let withdrawal: JsonRecord | null = null;
@@ -55,7 +57,10 @@ export function parseArchiveRequest(value: unknown) {
     const condition = optionalText(original.condition, 'return condition', 200);
     const remarks = optionalText(original.remarks, 'return remarks');
     if (!returnedAt && !activeWithdrawalIds.includes(id)) throw new RequestError('Active withdrawal state is inconsistent.');
-    withdrawal = { id, assetId: asset.id, releaser: text(original.releaser, 'releaser'), receiver: text(original.receiver, 'receiver'), signature, withdrawalAt, dueAt, createdAt: date(original.createdAt, 'transaction creation date'), notes: typeof original.notes === 'string' && original.notes.length <= 10000 ? original.notes : '', ...(returnedAt ? { returnedAt } : {}), ...(returning ? { returning } : {}), ...(receiving ? { receiving } : {}), ...(condition ? { condition } : {}), ...(remarks ? { remarks } : {}) };
+    const quantity = optionalQuantity(original.quantity, 1); const returnedQuantity = optionalQuantity(original.returnedQuantity, 0);
+    if ((quantity ?? 1) > (assetQuantity ?? 1) || (returnedQuantity ?? 0) > (quantity ?? 1)) throw new RequestError('Inconsistent withdrawal quantities.');
+    const batchId = optionalText(original.batchId, 'batch reference', 200); const reference = optionalText(original.reference, 'transaction reference', 200);
+    withdrawal = { ...(quantity !== undefined ? { quantity } : {}), ...(returnedQuantity !== undefined ? { returnedQuantity } : {}), ...(batchId ? { batchId } : {}), ...(reference ? { reference } : {}), id, assetId: asset.id, releaser: text(original.releaser, 'releaser'), receiver: text(original.receiver, 'receiver'), signature, withdrawalAt, dueAt, createdAt: date(original.createdAt, 'transaction creation date'), notes: typeof original.notes === 'string' && original.notes.length <= 10000 ? original.notes : '', ...(returnedAt ? { returnedAt } : {}), ...(returning ? { returning } : {}), ...(receiving ? { receiving } : {}), ...(condition ? { condition } : {}), ...(remarks ? { remarks } : {}) };
   }
   // Whitelist the audit snapshot; credentials and tokens are never part of it.
   return { phase: 'authorize' as const, authorizationId, installationId, password, snapshot: { kind, recordId, asset, withdrawal, activeWithdrawalIds } };

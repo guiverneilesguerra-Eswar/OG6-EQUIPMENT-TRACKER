@@ -4,6 +4,7 @@ import { useWithdrawals } from '@/hooks/useWithdrawals';
 import { FormModal } from '@/components/ui/FormModal';
 import { Badge, Button, Chips, Empty, ErrorText, Field } from '@/components/ui/Controls';
 import { DateField } from '@/components/ui/DateField';
+import { NameField } from '@/components/ui/NameField';
 import { SignaturePad } from './SignaturePad';
 import { ReceiptActions } from './ReceiptActions';
 import { formatDate } from '@/services/tracker';
@@ -28,8 +29,8 @@ export function WithdrawalForms({ model: m }: Props) {
         <Text style={[styles.helper, { color: c.subtle }]}>Due: {formatDate(w.dueAt)}</Text>
         <Badge status={m.status(w.assetId)} />
       </View>
-      <Field label="Returning personnel *" value={m.returning} onChangeText={m.setReturning} placeholder="Full name" />
-      <Field label="Receiving personnel *" value={m.receiving} onChangeText={m.setReceiving} placeholder="Full name" />
+      <NameField label="Returning personnel *" role="releasers" value={m.returning} onChangeText={m.setReturning} />
+      <NameField label="Receiving personnel *" role="receivers" value={m.receiving} onChangeText={m.setReceiving} />
       <Field label="Equipment condition *" value={m.condition} onChangeText={m.setCondition} placeholder="e.g. Good, complete, operational" />
       <Field label="Remarks" value={m.remarks} onChangeText={m.setRemarks} multiline placeholder="Additional observations" />
       <ErrorText message={m.returnError} />
@@ -47,8 +48,8 @@ export function WithdrawalForms({ model: m }: Props) {
         <Field label="Equipment notes / purpose *" value={m.manualNotes} onChangeText={m.setManualNotes} multiline placeholder="Condition, location, or purpose" />
       </>}
       <View style={[styles.divider, { backgroundColor: c.border }]} />
-      <Field label="Releaser *" value={m.releaser} onChangeText={m.setReleaser} placeholder="Full name of releasing personnel" />
-      <Field label="Receiver *" value={m.receiver} onChangeText={m.setReceiver} placeholder="Full name of responsible receiver" />
+      <NameField label="Releaser *" role="releasers" value={m.releaser} onChangeText={m.setReleaser} />
+      <NameField label="Receiver *" role="receivers" value={m.receiver} onChangeText={m.setReceiver} />
       <SignaturePad receiver={m.receiver} value={m.signature} onChange={m.setSignature} saved={m.saved} onSave={() => m.setSaved(true)} />
       <DateField label="Date of withdrawal *" value={m.withdrawalAt} onChange={m.setWithdrawalAt} />
       <DateField label="Due date for return *" value={m.dueAt} onChange={m.setDueAt} />

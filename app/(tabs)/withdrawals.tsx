@@ -5,6 +5,7 @@ import { Screen } from '@/components/layout/Screen';
 import { Button, Card, Chips, Empty, Field } from '@/components/ui/Controls';
 import { WithdrawalRow } from '@/components/feature/EquipmentRows';
 import { WithdrawalForms } from '@/components/feature/WithdrawalForms';
+import { BatchWithdrawals } from '@/components/feature/BatchWithdrawals';
 import { ProtectedDeletion } from '@/components/feature/ProtectedDeletion';
 import { RecordDetails } from '@/components/feature/RecordDetails';
 import { useWithdrawals } from '@/hooks/useWithdrawals';
@@ -19,6 +20,7 @@ export default function WithdrawalsPage() {
         <Chips options={['ACTIVE', 'OVERDUE', 'DUE SOON', 'RETURNED', 'ALL']} selected={m.filter} onSelect={value => { m.setFilter(value); router.setParams({ status: '' }); }} />
         <FlatList scrollEnabled={false} data={m.rows} keyExtractor={withdrawal => withdrawal.id} ListEmptyComponent={<Empty icon="swap-horizontal-outline" title={m.query ? 'No matching transactions' : m.filter === 'RETURNED' ? 'No returns recorded yet' : 'No transactions in this view'} message="" />} renderItem={({ item }) => <WithdrawalRow withdrawal={item} onView={() => m.setDetail(item)} onReturn={() => m.beginReturn(item)} onDelete={() => m.setDeleting(item)} onReceipt={() => m.showReceipt(item)} />} />
       </Card>
+      {m.canOperate ? <BatchWithdrawals /> : null}
     </Screen>
     {m.canOperate ? <WithdrawalForms model={m} /> : null}
     <RecordDetails withdrawal={m.detail ? m.data.withdrawals.find(withdrawal => withdrawal.id === m.detail?.id) : null} onClose={() => m.setDetail(null)} />

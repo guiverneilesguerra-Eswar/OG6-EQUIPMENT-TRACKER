@@ -1,29 +1,14 @@
-// C4S accountability console: smooth layered glass, tactical imagery and luminous status edges.
-// Both appearance preferences retain navy surfaces; the light preference is a brighter navy treatment.
-const command = {
-  navy: '#031A2C', white: '#FFFFFF', headerBg: '#021523',
-  headerSurface: 'rgba(2,24,43,0.92)', headerBorder: '#194A70',
-  headerText: '#BAD4EE', headerAccent: '#27A5F5', gold: '#D7B971', badgeDanger: '#E53243',
-  heroOverlay: 'rgba(1,17,31,0.16)', overlay: 'rgba(0,8,18,0.88)',
-  transparent: 'transparent', signalBlue: '#259DF1', signalGreen: '#24B856', signalRed: '#EF4B61',
-};
-const midnight = {
-  ...command, primary: '#48B9FF', action: '#0078D9', background: '#020E18',
-  surface: '#041C30', surfaceGlass: 'rgba(2,25,43,0.96)', surfaceAlt: '#082840',
-  text: '#F5F9FF', subtle: '#BDD3EA', placeholder: '#99B4CF',
-  border: '#1B3E5D', borderBright: '#287FB7', shadow: '#0089E0',
-  success: '#76EAA0', successBg: '#043725', warning: '#FFD18A', warningBg: '#543119',
-  danger: '#FF9BA6', dangerBg: '#351B28', blueBg: '#063659', muted: '#A6BDD2',
-  metricStart: '#08365A', metricEnd: '#021724', wallpaperOverlay: 'rgba(1,13,24,0.94)',
-};
+// OG6 equipment accountability: layered panels, yellow command accents, compact record rhythm.
 export const palettes = {
-  light: { ...midnight, background: '#061A2B', surface: '#0B2B44', surfaceGlass: 'rgba(8,36,58,0.97)', surfaceAlt: '#10334F', border: '#2C5676', metricEnd: '#08263A' },
-  dark: midnight,
+  dark: {
+    navy: '#101010', white: '#FFFFFF', onAction: '#121212', onAccent: '#101010', headerBg: '#111111', headerSurface: '#1A1A16', headerBorder: '#625722', headerText: '#DEDACA', headerAccent: '#FFD447', gold: '#FFD447', badgeDanger: '#B92436', heroOverlay: 'rgba(16,16,12,0.90)', overlay: 'rgba(0,0,0,0.82)', transparent: 'transparent', signalBlue: '#FFD447', signalGreen: '#70D89C', signalRed: '#FF8B97', primary: '#FFD447', action: '#FFD447', background: '#0C0D0E', surface: '#191B1D', surfaceGlass: '#191B1D', surfaceAlt: '#242629', text: '#F5F4EF', subtle: '#CDCBC4', placeholder: '#ABA9A0', border: '#505154', borderBright: '#8C792B', shadow: '#B59A2F', success: '#82E2AB', successBg: '#183529', warning: '#FFD447', warningBg: '#3D3318', danger: '#FF9AA5', dangerBg: '#3E1D25', blueBg: '#332D19', muted: '#BAB8B2', metricStart: '#332D19', metricEnd: '#191B1D', wallpaperOverlay: 'rgba(12,13,14,0.95)',
+  },
+  light: {
+    navy: '#F5F2E6', white: '#FFFFFF', onAction: '#121212', onAccent: '#FFFFFF', headerBg: '#F4EBC8', headerSurface: '#FFF9E7', headerBorder: '#B9A76B', headerText: '#514832', headerAccent: '#745500', gold: '#886500', badgeDanger: '#B92436', heroOverlay: 'rgba(250,247,234,0.97)', overlay: 'rgba(36,32,18,0.48)', transparent: 'transparent', signalBlue: '#795A00', signalGreen: '#17663C', signalRed: '#A91E31', primary: '#705200', action: '#F0C438', background: '#F7F5ED', surface: '#FFFFFF', surfaceGlass: '#FFFFFF', surfaceAlt: '#F1EFE5', text: '#20211E', subtle: '#56564E', placeholder: '#65645B', border: '#B6B4A9', borderBright: '#92731D', shadow: '#7C6A30', success: '#17633B', successBg: '#E3F3E9', warning: '#745100', warningBg: '#FFF0BC', danger: '#A41C30', dangerBg: '#FCE7EB', blueBg: '#FFF3CA', muted: '#5D5D54', metricStart: '#FFF3CA', metricEnd: '#FFFFFF', wallpaperOverlay: 'rgba(247,245,237,0.98)',
+  },
 };
 export type Colors = typeof palettes.dark;
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
-// OG6 command-console rhythm: 8px between cards, 12px inside panels,
-// tight text groups, and independent 48px interactive targets.
 export const density = { cardGap: 8, cardPadding: 12, sectionGap: 8, fieldGap: 4, headerGap: 4, iconGap: 8, valueGap: 2 };
 export const radius = { sm: 8, md: 16, lg: 20, pill: 99 };
 export const type = { tiny: 12, micro: 14, caption: 16, meta: 16, small: 16, label: 20, body: 16, section: 28, title: 32, hero: 48, brand: 48, metric: 56 };
