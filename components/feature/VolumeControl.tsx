@@ -13,8 +13,8 @@ export const VolumeControl = memo(function VolumeControl({ label, value, onChang
   </View>;
 });
 const styles = StyleSheet.create({
-  root: { marginTop: density.headerGap }, labelRow: { flexDirection: 'row', alignItems: 'center', gap: density.iconGap },
+  root: { marginTop: density.sectionGap }, labelRow: { flexDirection: 'row', alignItems: 'center', gap: density.iconGap },
   label: { fontSize: type.meta, lineHeight: leading.small, fontWeight: '600', textTransform: 'uppercase', flex: 1, includeFontPadding: false },
-  number: { flexShrink: 0, fontSize: type.label, lineHeight: leading.label, fontWeight: '700', fontVariant: ['tabular-nums'], includeFontPadding: false }, slider: { width: '100%', height: 48, marginTop: density.valueGap },
+  number: { fontSize: type.label, fontWeight: '700', includeFontPadding: false }, slider: { width: '100%', height: 48, marginTop: density.valueGap },
   hint: { fontSize: type.caption, lineHeight: leading.caption, includeFontPadding: false },
 });
