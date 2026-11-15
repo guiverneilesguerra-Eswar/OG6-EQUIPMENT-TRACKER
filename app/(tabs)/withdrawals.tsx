@@ -8,7 +8,7 @@ import { WithdrawalForms } from '@/components/feature/WithdrawalForms';
 import { ProtectedDeletion } from '@/components/feature/ProtectedDeletion';
 import { RecordDetails } from '@/components/feature/RecordDetails';
 import { useWithdrawals } from '@/hooks/useWithdrawals';
-import { spacing, type, radius, density } from '@/constants/theme';
+import { spacing, type, leading, radius, density } from '@/constants/theme';
 export default function WithdrawalsPage() {
   const m = useWithdrawals(); const c = m.colors; const router = useRouter();
   return <>
@@ -25,4 +25,4 @@ export default function WithdrawalsPage() {
     <ProtectedDeletion visible={Boolean(m.deleting)} kind="withdrawal" recordId={m.deleting?.id || ''} name={m.deleting ? `${m.asset(m.deleting.assetId)?.name} · ${m.deleting.id}` : ''} activeWithdrawal={Boolean(m.deleting && !m.deleting.returnedAt && !m.deleting.deletedAt)} onClose={() => m.setDeleting(null)} />
   </>;
 }
-const styles = StyleSheet.create({ titleRow: { flexDirection: 'row', alignItems: 'center', gap: density.iconGap, marginBottom: density.headerGap }, title: { fontSize: type.label, fontWeight: '700', flex: 1 }, countBox: { minWidth: 42, minHeight: 36, paddingHorizontal: spacing.sm, borderRadius: radius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center' }, count: { fontSize: type.small, fontWeight: '700' } });
+const styles = StyleSheet.create({ titleRow: { flexDirection: 'row', alignItems: 'center', gap: density.iconGap, marginBottom: density.headerGap }, title: { fontSize: type.label, lineHeight: leading.label, fontWeight: '700', flex: 1, minWidth: 1, includeFontPadding: false }, countBox: { minWidth: 42, minHeight: 36, paddingHorizontal: spacing.sm, borderRadius: radius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center' }, count: { fontSize: type.small, lineHeight: leading.small, fontWeight: '700', fontVariant: ['tabular-nums'], includeFontPadding: false } });

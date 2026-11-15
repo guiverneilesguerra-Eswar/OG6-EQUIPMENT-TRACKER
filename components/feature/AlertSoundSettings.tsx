@@ -42,9 +42,9 @@ export const AlertSoundSettings = memo(function AlertSoundSettings({ channel }: 
   </>;
 });
 const styles = StyleSheet.create({
-  panel: { padding: density.cardPadding, borderWidth: 1, borderRadius: radius.md, gap: density.cardGap, marginTop: density.sectionGap },
+  panel: { padding: density.cardPadding, borderWidth: 1, borderRadius: radius.md, gap: density.headerGap, marginTop: density.cardGap },
   heading: { flexDirection: 'row', alignItems: 'center', gap: density.iconGap }, label: { flex: 1, fontSize: type.label, lineHeight: leading.label, fontWeight: '700', includeFontPadding: false },
   filename: { fontSize: type.body, lineHeight: leading.body, fontWeight: '600', includeFontPadding: false }, helper: { fontSize: type.caption, lineHeight: leading.caption, includeFontPadding: false },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: density.cardGap }, consent: { minHeight: 48, padding: density.cardPadding, marginVertical: density.sectionGap, flexDirection: 'row', gap: density.iconGap, alignItems: 'center', borderRadius: radius.sm, borderWidth: 1 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: density.cardGap, maxWidth: '100%' }, consent: { minHeight: 48, padding: density.cardPadding, marginVertical: density.sectionGap, flexDirection: 'row', gap: density.iconGap, alignItems: 'center', borderRadius: radius.sm, borderWidth: 1 },
   consentText: { flex: 1, fontSize: type.body, lineHeight: leading.body, includeFontPadding: false },
 });
