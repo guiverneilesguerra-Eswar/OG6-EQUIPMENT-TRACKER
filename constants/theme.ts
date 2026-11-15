@@ -22,10 +22,11 @@ export const palettes = {
 };
 export type Colors = typeof palettes.dark;
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
-// Compact layout tokens keep card density consistent without shrinking touch targets.
-export const density = { cardGap: 6, cardPadding: 8, sectionGap: 8, fieldGap: 2, headerGap: 4, iconGap: 4, valueGap: 2 };
+// OG6 command-console rhythm: 8px between cards, 12px inside panels,
+// tight text groups, and independent 48px interactive targets.
+export const density = { cardGap: 8, cardPadding: 12, sectionGap: 8, fieldGap: 4, headerGap: 4, iconGap: 8, valueGap: 2 };
 export const radius = { sm: 8, md: 16, lg: 20, pill: 99 };
 export const type = { tiny: 12, micro: 14, caption: 16, meta: 16, small: 16, label: 20, body: 16, section: 28, title: 32, hero: 48, brand: 48, metric: 56 };
-export const leading = { caption: 22, footer: 22, small: 24, compact: 26, label: 26, detail: 26, body: 26, relaxed: 28, long: 30 };
-export const layout = { sidebarWidth: 226, mediumSidebarWidth: 186, compactSidebarWidth: 150, contentWidth: 1488, heroHeight: 176, compactHeroHeight: 128, metricHeight: 112, compactMetricHeight: 96, metricIcon: 64, compactMetricIcon: 44, referenceWidth: 1672, pageInset: 24, overviewHeight: 306, lowerHeight: 400, activityHeight: 64, railFraction: 0.349, panelGap: 6 };
-export const consoleType = { brand: 48, brandMedium: 36, brandCompact: 24, page: 32, pageCompact: 22, section: 28, sectionCompact: 20, metric: 56, metricCompact: 36, metricLabel: 20, activity: 18, activityMeta: 16, status: 16 };
+export const leading = { caption: 20, footer: 20, small: 22, compact: 24, label: 24, detail: 24, body: 26, relaxed: 26, long: 30 };
+export const layout = { sidebarWidth: 226, mediumSidebarWidth: 186, compactSidebarWidth: 150, contentWidth: 1488, heroHeight: 144, compactHeroHeight: 112, metricHeight: 104, compactMetricHeight: 96, metricIcon: 52, compactMetricIcon: 36, referenceWidth: 1672, pageInset: 16, overviewHeight: 306, lowerHeight: 400, activityHeight: 56, railFraction: 0.349, panelGap: density.cardGap };
+export const consoleType = { brand: 40, brandMedium: 32, brandCompact: 24, page: 28, pageCompact: 22, section: 24, sectionCompact: 20, metric: 48, metricCompact: 36, metricLabel: 18, activity: 18, activityMeta: 16, status: 16 };
