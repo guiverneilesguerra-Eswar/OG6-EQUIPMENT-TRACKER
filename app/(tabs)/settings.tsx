@@ -9,7 +9,7 @@ import { radius, spacing, type, leading, density } from '@/constants/theme';
 export default function SettingsPage() {
   const m = useSettings(); const c = m.colors; const s = m.data.settings; const { contentWidth } = useResponsive(); const tablet = contentWidth >= 700;
   return <Screen title="SYSTEM SETTINGS" icon="settings-outline">
-    <ErrorText message={m.error} />
+    <ErrorText message={m.error || m.audioController.actionError} />
     <View style={[styles.grid, tablet ? styles.gridWide : null]}>
       <View style={[styles.column, tablet ? styles.wideColumn : null]}>
         <Card><View style={styles.sectionHeader}><View style={[styles.icon, { backgroundColor: c.blueBg, borderColor: c.border }]}><Ionicons name="contrast-outline" size={25} color={c.primary} /></View><Text style={[styles.title, { color: c.text }]}>APPEARANCE</Text></View>
@@ -27,6 +27,8 @@ export default function SettingsPage() {
         <View style={[styles.switchRow, { borderColor: c.border }]}><Text style={[styles.settingLabel, { color: c.text, flex: 1 }]}>ENABLE NOTIFICATIONS & REMINDERS</Text><Switch accessibilityLabel="Enable notifications and reminders (master control)" value={s.enabled} disabled={m.busy || !m.loaded} onValueChange={value => void m.save({ enabled: value })} trackColor={{ false: c.border, true: c.action }} thumbColor={c.white} /></View>
         <View style={[styles.switchRow, { borderColor: c.border }]}><Text style={[styles.settingLabel, { color: c.text, flex: 1 }]}>ENABLE HIGH-PRIORITY ALARMS</Text><Switch accessibilityLabel="Enable high-priority and repeated overdue alarms" value={s.alarmEnabled !== false} disabled={m.busy || !m.loaded} onValueChange={value => void m.save({ alarmEnabled: value })} trackColor={{ false: c.border, true: c.action }} thumbColor={c.white} /></View>
         <Text style={[styles.helper, { color: c.subtle }]}>Two independent MP3/WAV files and volume controls. Uploading, replacing or removing one never changes the other. Both volumes default to 100%, retaining saved choices. Overdue alarms repeat every 20 seconds.</Text>
+        <View style={styles.soundActions}><Button title="Open reference sound" secondary icon="open-outline" onPress={() => void m.openReference()} loading={m.openingReference} /></View>
+        <Text style={[styles.helper, { color: c.subtle }]}>Opens the original YouTube reference only. Your saved notification and alarm MP3/WAV files remain the active default sounds; opening the reference does not replace either file or reset its volume.</Text>
         <AlertSoundSettings channel="notification" />
         <AlertSoundSettings channel="alarm" />
         {m.audioController.pendingCount ? <View style={styles.soundActions}><Button title="Stop alarm / Acknowledge" secondary icon="volume-mute-outline" onPress={() => void m.audioController.acknowledge()} disabled={m.busy || m.audioController.testing || m.audioController.acknowledging} /></View> : null}
