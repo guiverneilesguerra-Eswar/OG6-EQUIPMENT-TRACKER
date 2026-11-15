@@ -20,7 +20,7 @@ export function archiveSnapshot(data: TrackerData, kind: ArchiveKind, recordId: 
   const snapshot: ArchiveSnapshot = { kind, recordId,
     asset: { id: asset.id, name: asset.name, serial: asset.serial, notes: asset.notes, createdAt: asset.createdAt, updatedAt: asset.updatedAt, ...(asset.archivedAt ? { archivedAt: asset.archivedAt } : {}) },
     withdrawal: withdrawal ? { id: withdrawal.id, assetId: withdrawal.assetId, releaser: withdrawal.releaser, receiver: withdrawal.receiver, signature: withdrawal.signature, withdrawalAt: withdrawal.withdrawalAt, dueAt: withdrawal.dueAt, createdAt: withdrawal.createdAt, notes: withdrawal.notes,
-      ...(withdrawal.returnedAt ? { returnedAt: withdrawal.returnedAt } : {}), ...(withdrawal.returning ? { returning: withdrawal.returning } : {}), ...(withdrawal.receiving ? { receiving: withdrawal.receiving } : {}), ...(withdrawal.condition ? { condition: withdrawal.condition } : {}), ...(withdrawal.remarks ? { remarks: withdrawal.remarks } : {}), ...(withdrawal.receivingSignature ? { receivingSignature: withdrawal.receivingSignature } : {}), ...(withdrawal.receivingSignatureAt ? { receivingSignatureAt: withdrawal.receivingSignatureAt } : {}) } : null,
+      ...(withdrawal.returnedAt ? { returnedAt: withdrawal.returnedAt } : {}), ...(withdrawal.returning ? { returning: withdrawal.returning } : {}), ...(withdrawal.receiving ? { receiving: withdrawal.receiving } : {}), ...(withdrawal.condition ? { condition: withdrawal.condition } : {}), ...(withdrawal.remarks ? { remarks: withdrawal.remarks } : {}) } : null,
     activeWithdrawalIds };
   if (JSON.stringify(snapshot).length > 100000) throw new Error('This record is too large for secure archival. Contact the administrator; no data was changed.');
   return snapshot;

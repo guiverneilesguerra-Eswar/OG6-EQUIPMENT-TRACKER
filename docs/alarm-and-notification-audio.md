@@ -7,9 +7,7 @@
 - **A. NOTIFICATION SOUND**: Upload Notification Sound, Preview Notification, Test Notification, Replace Notification Sound, Remove Notification Sound, and Notification Volume (0–100%). Used for equipment withdrawals, returns, registration/edit/import confirmations and general system notifications.
 - **B. ALARM SOUND**: Upload Alarm Sound, Preview Alarm, Test Alarm, Replace Alarm Sound, Remove Alarm Sound, and Alarm Volume (0–100%). Used for active unacknowledged overdue equipment, repeated overdue reminders, explicitly critical alerts, and existing high-priority due-soon reminders.
 
-Each panel displays its own filename/duration, active-default selection label, loading/error state, browser activation state and stop-preview control. Upload/replace/remove/preview/test/volume controls exist only in SETTINGS. Other tabs retain operational STOP ALARM / ACKNOWLEDGE controls and overdue countdown states, but their shared banner no longer exposes sound-setup prompts, configuration shortcuts, an uploader, audio activation, previews or tests. Normal workspace navigation to SETTINGS is preserved.
-
-SETTINGS contains one **OPEN REFERENCE SOUND** button for the original YouTube reference. It opens the link externally and reports opening failures. It does not upload, download, substitute, play through the app player, modify either selected file, reset volume or save preferences. The existing uploaded notification and alarm MP3/WAV files remain the active default sounds. There is no shared Upload Reference Sound control; the two dedicated channel uploaders are retained.
+Each panel displays its own filename/duration, loading/error state, browser activation state and stop-preview control. Upload/replace/remove/preview/test/volume controls exist only in SETTINGS. Other tabs retain operational STOP ALARM / ACKNOWLEDGE controls and may link to SETTINGS; their shared banner no longer exposes an uploader, audio activation button or preview controls.
 
 The master notification toggle, separate high-priority-alarm toggle, warning-window selection, navy theme, five tabs, receipts, exports, inventory import/scanning, transactions and password-authorized actions are preserved.
 
@@ -56,12 +54,11 @@ The banner still consumes the scheduler's one-second clock and unchanged 20-seco
 
 ## Validation status
 
-Automated tests, type/build checks and physical Android/browser playback tests were **not run in this editor session**. Cross-file inspection confirmed two sound panels mounted only in SETTINGS, one reference action in SETTINGS and no sound-settings shortcut in the shared alarm banner. Added source-placement regression tests guard these boundaries, operational acknowledgement/countdown controls and the reference action's lack of audio/preference mutations. These source checks are not playback or rendered-UI tests. Existing pure tests cover channel routing, defaults, migration, independent patch keys, replacement/removal, persisted nulls, volume preservation, headers, size/duration bounds, acknowledgement integrity and countdown timing. A separate mocked-player suite covers independent browser activation, active/queued playback, live gain including future muted jobs, source replacement/removal, channel-specific failure, duplicate suppression, legacy URL ownership and maximum concurrency of one. Mocks are test-only; they do not supply application audio.
+Automated tests, type/build checks and physical Android/browser playback tests were **not run in this editor session**. Added pure tests cover channel routing, defaults, migration, independent patch keys, replacement/removal, persisted nulls, volume preservation, headers, size/duration bounds, acknowledgement integrity and countdown timing. A separate mocked-player suite covers independent browser activation, active/queued playback, live gain including future muted jobs, source replacement/removal, channel-specific failure, duplicate suppression, legacy URL ownership and maximum concurrency of one. Mocks are test-only; they do not supply application audio.
 
 ```sh
 deno test --import-map tests/import-map.json tests/audio.test.ts tests/audioConfiguration.test.ts tests/alarmAcknowledgements.test.ts tests/alertSoundValidation.test.ts
 deno test --import-map tests/audio-player-import-map.json tests/audioPlayback.test.ts
-deno test --allow-read=app,components,hooks tests/audioSettingsPlacement.test.ts
 ```
 
 Before operational use, verify on Android and desktop:
@@ -72,4 +69,3 @@ Before operational use, verify on Android and desktop:
 4. Replace/remove notification audio while an alarm plays and vice versa; no unrelated source should be stopped, overwritten or disabled.
 5. Test separate browser activation, autoplay restrictions, missing/evicted audio, invalid files, decoder/storage/save failures, rapid tests, repeated alerts and background transitions without overlap.
 6. Verify overdue 20-second cadence, countdown states, acknowledgement timestamps/IDs and absence of duplicate history. Compare existing assets, withdrawals, signatures, receipts, imports, reports and server password gates for preservation.
-7. Inspect HOME, WITHDRAWALS (including return forms), INVENTORY and REPORTS: no sound upload, preview, test, reference link, slider or enable/disable configuration should appear. Operational overdue status and STOP ALARM / ACKNOWLEDGE must remain. Open the reference in SETTINGS and confirm both selected filenames, volumes and active defaults are unchanged.

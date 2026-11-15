@@ -33,12 +33,7 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
         <Text style={[styles.section, { color: c.text }]}>PDF RECEIPT</Text>
         {w.returnedAt ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
         <ReceiptActions key={`${w.id}-${w.returnedAt ? receiptKind : 'withdrawal'}`} asset={a} withdrawal={w} kind={w.returnedAt ? receiptKind : 'withdrawal'} />
-        {w.returnedAt ? <>{line('Returned at', formatDate(w.returnedAt))}{line('Returning personnel', w.returning)}{line('Receiving personnel', w.receiving)}{line('Return condition', w.condition)}{line('Return remarks', w.remarks)}
-          {w.receivingSignature?.length ? <>
-            <SignaturePad label="Receiving personnel signature on return" receiver={w.receiving || ''} value={w.receivingSignature} onChange={() => {}} onSave={() => {}} saved readOnly />
-            {line('Return signature captured at', w.receivingSignatureAt ? formatDate(w.receivingSignatureAt) : undefined)}
-          </> : <Text style={[styles.label, { color: c.subtle }]}>Receiving signature was not captured for this historical return.</Text>}
-        </> : null}
+        {w.returnedAt ? <>{line('Returned at', formatDate(w.returnedAt))}{line('Returning personnel', w.returning)}{line('Receiving personnel', w.receiving)}{line('Return condition', w.condition)}{line('Return remarks', w.remarks)}</> : null}
       </> : null}
       {acknowledgements.length ? <>
         <Text style={[styles.section, { color: c.text }]}>ALARM ACKNOWLEDGEMENT HISTORY</Text>
