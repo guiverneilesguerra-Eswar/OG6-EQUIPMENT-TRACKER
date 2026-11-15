@@ -18,11 +18,12 @@ export default function ReportsPage() {
       <Text style={[styles.updated, { color: c.subtle }]}>{m.rows.length} assets · Refreshed {formatDate(m.refreshed)}</Text>
     </Card>
     <Card style={styles.exportCard}>
-      <View style={styles.exportHeader}><View style={[styles.exportIcon, { backgroundColor: c.successBg, borderColor: c.success }]}><Ionicons name="document-text-outline" size={28} color={c.success} /></View><View style={styles.heading}><Text style={[styles.title, { color: c.text }]}>EXCEL ACCOUNTABILITY WORKBOOK</Text><Text style={[styles.subtitle, { color: c.subtle }]}>.XLSX · 4 WORKSHEETS</Text></View></View>
+      <View style={styles.exportHeader}><View style={[styles.exportIcon, { backgroundColor: c.successBg, borderColor: c.success }]}><Ionicons name="document-text-outline" size={28} color={c.success} /></View><View style={styles.heading}><Text style={[styles.title, { color: c.text }]}>EXCEL ACCOUNTABILITY WORKBOOK</Text><Text style={[styles.subtitle, { color: c.subtle }]}>.XLSX · 6 WORKSHEETS · A4 SIGNATURE SECTIONS</Text></View></View>
       {m.canOperate ? <>
-        <Text style={[styles.subtitle, { color: c.subtle }]}>Date range filters withdrawal history only. Inventory status is a current snapshot.</Text>
+        <Text style={[styles.subtitle, { color: c.subtle }]}>Date range filters withdrawal dates for history and both signature sheets. Inventory status is a current snapshot.</Text>
         <View style={styles.range}><View style={styles.date}><DateField label="History start date" dateOnly value={m.from} onChange={m.setFrom} /></View><View style={styles.date}><DateField label="History end date" dateOnly value={m.to} onChange={m.setTo} /></View></View>
         {m.from || m.to ? <Button title="Clear date range" secondary compact onPress={() => { m.setFrom(''); m.setTo(''); }} /> : null}
+        <Text style={[styles.subtitle, { color: c.subtle }]}>Withdrawal and return signature sections include personnel names and captured pen signatures. Uncaptured signatures stay blank for manual signing.</Text>
         <ErrorText message={m.error} />{m.downloaded ? <Text accessibilityRole="alert" style={[styles.success, { color: c.success }]}>Report ready: {m.downloaded}</Text> : null}
         <View style={styles.download}><Button title="Download Excel report" icon="download-outline" loading={m.generating} onPress={() => void m.download()} /></View>
       </> : <Text style={[styles.subtitle, { color: c.subtle }]}>The workbook contains personnel records. Export is available in the local operator workspace only.</Text>}
