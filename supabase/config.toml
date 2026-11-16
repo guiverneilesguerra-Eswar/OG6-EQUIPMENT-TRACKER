@@ -10,3 +10,12 @@ verify_jwt = false
 # Device-local restore and name management verify the administrator password on every action.
 [functions.og6-authorize-maintenance]
 verify_jwt = false
+
+# Public configuration returns ONLY the non-secret VAPID public key.
+# Registration requires the admin password; later calls require a scoped device capability.
+[functions.og6-push-device]
+verify_jwt = false
+
+# Protected by a private scheduler capability; never accessible to app clients.
+[functions.og6-dispatch-push]
+verify_jwt = false

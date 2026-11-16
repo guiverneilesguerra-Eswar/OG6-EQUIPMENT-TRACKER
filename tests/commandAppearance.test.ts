@@ -26,9 +26,9 @@ Deno.test('subsequent light and system selections are not overridden', () => {
     if (restoreCommandTheme(data, true) !== data) throw new Error('Saved appearance preference was overridden');
   }
 });
-Deno.test('command identity uses navy surfaces and independent blue, green and red signals', () => {
+Deno.test('command identity preserves black-and-yellow with independent semantic indicators', () => {
   const c = palettes.dark;
-  if (c.primary === c.gold || c.headerAccent === c.gold) throw new Error('Yellow command accents remain');
-  if (new Set([c.signalBlue, c.signalGreen, c.signalRed]).size !== 3) throw new Error('Equipment states need distinct signal colors');
-  if (c.onAction !== c.white) throw new Error('Blue actions should retain white labels');
+  if (c.primary !== c.gold || c.headerAccent !== c.gold) throw new Error('OG6 yellow accents missing');
+  if (new Set([c.signalBlue, c.signalGreen, c.signalRed]).size !== 3) throw new Error('Equipment states need distinct signals');
+  if (c.onAction === c.white) throw new Error('Yellow actions need dark accessible labels');
 });

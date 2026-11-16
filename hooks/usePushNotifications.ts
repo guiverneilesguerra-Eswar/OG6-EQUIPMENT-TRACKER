@@ -1,0 +1,16 @@
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { Platform } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useTracker } from './useTracker';
+import { loadPushRegistration, registerPush, synchronizePush, testPush, pushStatus } from '@/services/pushNotifications';
+export function usePushObserver(){const router=useRouter();useEffect(()=>{if(Platform.OS==='web')return;let active=true;let subscription:{remove:()=>void}|null=null;const seen=new Set<string>();void import('expo-notifications').then(async n=>{if(!active)return;const handle=(r:any)=>{const id=r?.notification?.request?.identifier;if(!id || seen.has(id))return;seen.add(id);const s=r.notification.request.content.data?.status;const status=['OVERDUE','DUE SOON','DUE TODAY'].includes(s)?s:'ACTIVE';router.push({pathname:'/(tabs)/withdrawals',params:{status}});void n.clearLastNotificationResponseAsync().catch(()=>{});};n.setNotificationHandler({handleNotification:async()=>({shouldShowAlert:true,shouldShowBanner:true,shouldShowList:true,shouldPlaySound:true,shouldSetBadge:false})});subscription=n.addNotificationResponseReceivedListener(handle);const r=await n.getLastNotificationResponseAsync();if(active && r)handle(r);}).catch(()=>{});return()=>{active=false;subscription?.remove();};},[router]);}
+export function usePushNotifications(){
+ const tracker=useTracker();const[password,setPassword]=useState('');const[registered,setRegistered]=useState(false);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[message,setMessage]=useState('');const[serverStatus,setServerStatus]=useState<any>(null);const lock=useRef(false);
+ useEffect(()=>{let active=true;void loadPushRegistration().then(r=>{if(active)setRegistered(!!r);}).catch(()=>{});return()=>{active=false;};},[]);
+ const run=useCallback(async(action:()=>Promise<string>)=>{if(lock.current)return;lock.current=true;setBusy(true);setError('');setMessage('');try{if(!tracker.canOperate)throw new Error('Switch to the local operator workspace.');setMessage(await action());}catch(e){setError(e instanceof Error?e.message:'Notification operation failed.');}finally{lock.current=false;setBusy(false);}},[tracker.canOperate]);
+ const register=()=>run(async()=>{if(!password)throw new Error('Enter the administrator password to authorize this device.');await registerPush(tracker.data,password);setPassword('');setRegistered(true);return 'Device registered. Server dispatch needs an external scheduler; confirm a delivery test on this device.';});
+ const save= (patch:Parameters<typeof tracker.updateSettings>[0])=>run(async()=>{if(!registered)throw new Error('Register this device before changing background notification settings.');await tracker.updateSettings(patch);await synchronizePush({...tracker.data,settings:{...tracker.data.settings,...patch}});return 'Notification preferences synchronized.';});
+ const test=()=>run(testPush);
+ const check=()=>run(async()=>{await synchronizePush(tracker.data);const status=await pushStatus();setServerStatus(status);return status?.schedulerLastRun?`Last server dispatch: ${status.schedulerLastRun}`:'No successful server dispatch recorded. External scheduler setup is required.';});
+ return{...tracker,password,setPassword,registered,busy,error,message,serverStatus,register,save,test,check};
+}

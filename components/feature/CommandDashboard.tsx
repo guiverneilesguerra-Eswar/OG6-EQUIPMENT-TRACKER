@@ -3,6 +3,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDashboard } from '@/hooks/useDashboard';
+import { DashboardAnalytics } from './DashboardAnalytics';
 import { useResponsive } from '@/hooks/useResponsive';
 import { DashboardActivity } from '@/services/dashboard';
 import { formatDate } from '@/services/tracker';
@@ -85,6 +86,7 @@ export function CommandDashboard(_props: DashboardProps) {
         <StatusMetric title={'OVERDUE\nITEMS'} value={m.stats.overdue} icon="warning-outline" accent={c.signalRed} background={c.dangerBg} colors={c} fourColumns={fourMetrics} scale={scale} />
       </View>
     </Card>
+    <DashboardAnalytics />
     <View style={[styles.lower, { marginTop: density.cardGap, gap: density.cardGap }, rail ? styles.lowerWide : null]}>
       <Card style={[styles.activitiesCard, { padding: density.cardPadding }, rail ? styles.activityRail : null]}>
         <View style={[styles.sectionHeader, { marginBottom: density.headerGap }]}><View style={styles.headingGroup}><Ionicons name="time-outline" size={30 * scale} color={c.headerText} /><Text style={[styles.sectionTitle, { color: c.text, fontSize: Math.max(type.label, consoleType.section * scale) }]}>RECENT ACTIVITIES</Text></View><Pressable accessibilityRole="button" accessibilityLabel={m.expanded ? 'Show recent activities' : 'View all activities'} onPress={m.toggleActivities} style={({ pressed }) => [styles.viewAll, { opacity: pressed ? 0.6 : 1 }]}><Text style={[styles.viewAllText, { color: c.primary }]}>{m.expanded ? 'SHOW LESS' : table ? 'VIEW ALL ACTIVITIES' : 'VIEW ALL'}</Text><Ionicons name="arrow-forward-outline" size={22} color={c.primary} /></Pressable></View>

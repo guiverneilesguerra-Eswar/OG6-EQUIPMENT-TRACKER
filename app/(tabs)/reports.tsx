@@ -4,11 +4,13 @@ import { Screen } from '@/components/layout/Screen';
 import { Badge, Button, Card, Chips, Empty, ErrorText, Field } from '@/components/ui/Controls';
 import { DateField } from '@/components/ui/DateField';
 import { useReports } from '@/hooks/useReports';
+import { AnalyticsDashboard } from '@/components/feature/AnalyticsDashboard';
 import { formatDate } from '@/services/tracker';
 import { spacing, radius, type, leading, density } from '@/constants/theme';
 export default function ReportsPage() {
   const m = useReports(); const c = m.colors;
   return <Screen title="EQUIPMENT REPORTS" icon="stats-chart-outline">
+    <AnalyticsDashboard />
     <Card>
       <View style={styles.header}><View style={styles.heading}><View style={styles.titleRow}><Ionicons name="stats-chart-outline" size={24} color={c.primary} /><Text style={[styles.title, { color: c.text }]}>EQUIPMENT STATUS REPORT</Text></View><Text style={[styles.subtitle, { color: c.subtle }]}>Current inventory snapshot · Philippine time</Text></View><Button title="Refresh" secondary compact icon="refresh-outline" onPress={m.refresh} /></View>
       <Field label="Search equipment" value={m.query} onChangeText={m.setQuery} placeholder="Equipment name" />
