@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import type { PDFFont } from 'pdf-lib';
 import type { Signature } from './tracker';
+import type { ReceiptPreviewDocument } from './receiptPreview';
 import { palettes } from '../constants/theme';
 import { a4Layout as a4 } from '../constants/pdfLayout';
 
@@ -12,7 +13,7 @@ export type A4Block =
 interface TextCommand { kind: 'text'; text: string; x: number; y: number; size: number; bold: boolean }
 interface LineCommand { kind: 'line'; x: number; y: number; endX: number; endY: number; thickness: number }
 type Command = TextCommand | LineCommand;
-export interface SingleA4File { bytes: Uint8Array; base64: string; html: string; scale: number }
+export interface SingleA4File { bytes: Uint8Array; base64: string; html: string; scale: number; preview: ReceiptPreviewDocument }
 const color = (hex: string) => rgb(parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255);
 const htmlEntities: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const escape = (value: string) => value.replace(/[&<>"']/g, ch => htmlEntities[ch] || ch);
@@ -112,7 +113,9 @@ export async function createSingleA4Document(title: string, blocks: A4Block[]): 
   drawText('Personnel record - authorized recipients only.', a4.margin, a4.height - 25, 8, false);
   drawText('A4 | 1 / 1', a4.width - a4.margin - 48, a4.height - 25, 8, false);
   doc.setTitle(title); doc.setAuthor('OG6 EQUIPMENT TRACKER'); doc.setCreator('OG6 EQUIPMENT TRACKER');
-  // The printed SVG uses the same measured commands as the downloaded vector PDF.
-  const html = `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;width:210mm;height:297mm}svg{display:block;width:210mm;height:297mm}*{box-sizing:border-box}</style></head><body><svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 ${a4.width} ${a4.height}">${svg.join('')}</svg></body></html>`;
-  return { bytes: await doc.save(), base64: await doc.saveAsBase64(), html, scale };
+  // PDF, print and local in-app preview all share these exact measured vector commands.
+  const previewSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${a4.width}" height="${a4.height}" viewBox="0 0 ${a4.width} ${a4.height}"><rect x="0" y="0" width="${a4.width}" height="${a4.height}" fill="${palettes.light.surface}" />${svg.join('')}</svg>`;
+  const preview: ReceiptPreviewDocument = { svg: previewSvg, width: a4.width, height: a4.height, bodyScale: scale };
+  const html = `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 portrait;margin:0}html,body{margin:0;padding:0;width:210mm;height:297mm}svg{display:block;width:210mm;height:297mm}*{box-sizing:border-box}</style></head><body>${previewSvg}</body></html>`;
+  return { bytes: await doc.save(), base64: await doc.saveAsBase64(), html, scale, preview };
 }

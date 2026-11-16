@@ -6,6 +6,7 @@ import { ReceiptKind } from '@/services/receipts';
 import { useReceipt } from '@/hooks/useReceipt';
 import { useTracker } from '@/hooks/useTracker';
 import { Button, ErrorText } from '@/components/ui/Controls';
+import { ReceiptPreview } from './ReceiptPreview';
 import { leading, spacing, type, density } from '@/constants/theme';
 
 interface ActionsProps { asset: Asset; withdrawal: Withdrawal; kind: ReceiptKind; returnReference?: string }
@@ -16,11 +17,12 @@ export const ReceiptActions = memo(function ReceiptActions({ asset, withdrawal, 
     {m.preparing ? <View style={styles.progress}><ActivityIndicator color={c.primary} /><Text style={[styles.message, { color: c.subtle }]}>Preparing PDF…</Text></View> : null}
     <ErrorText message={m.error} />
     {!m.file && !m.preparing ? <Button title="Retry PDF generation" secondary onPress={m.retry} /> : null}
+    {m.file?.preview ? <ReceiptPreview document={m.file.preview} filename={m.file.filename} /> : null}
     <Button title="Share / send PDF" icon="share-outline" disabled={!m.file || m.printing} loading={m.delivering} onPress={() => void m.deliver(true)} />
     <Button title={Platform.OS === 'web' ? 'Download PDF' : 'Save PDF on device'} secondary icon="download-outline" disabled={!m.file || m.delivering || m.printing} onPress={() => void m.deliver(false)} />
     <Button title="Print complete receipt" secondary icon="print-outline" disabled={!m.file || m.delivering} loading={m.printing} onPress={() => void m.print()} />
     {m.message ? <Text accessibilityRole="alert" style={[styles.message, { color: c.primary }]}>{m.message}</Text> : null}
-    <Text style={[styles.privacy, { color: c.subtle }]}>One A4 sheet. All items and signatures are retained; large batches or long remarks use smaller text. For easier reading, zoom the PDF or export the Excel report.</Text>
+    <Text style={[styles.privacy, { color: c.subtle }]}>One A4 sheet. All items and signatures are retained; large batches or long remarks use smaller text. For easier reading, use the preview zoom controls or export the Excel report.</Text>
     <Text style={[styles.privacy, { color: c.subtle }]}>Contains personnel details and a signature. Share only with authorized recipients.</Text>
   </View>;
 });

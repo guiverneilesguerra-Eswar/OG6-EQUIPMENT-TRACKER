@@ -10,6 +10,8 @@ async function verify(file: Awaited<ReturnType<typeof createSingleA4Document>>) 
   check(Math.abs(size.width - 595.28) < 0.01 && Math.abs(size.height - 841.89) < 0.01, 'Physical size must be A4 portrait');
   check(file.scale > 0 && file.scale <= 1 && Number.isFinite(file.scale), 'Auto-fit must be finite');
   check(file.html.includes('@page{size:A4 portrait;margin:0}') && file.html.includes('A4 | 1 / 1'), 'Print output uses the same single A4 sheet');
+  check(file.html.includes(file.preview.svg), 'Local preview and print must share the generated PDF vector layout');
+  check(file.preview.width === a4Layout.width && file.preview.height === a4Layout.height && file.preview.bodyScale === file.scale, 'Preview must describe the actual generated A4 page');
   for (const match of file.html.matchAll(/<text x="([\d.]+)" y="([\d.]+)"/g)) {
     const x = Number(match[1]), y = Number(match[2]);
     check(x >= a4Layout.margin - 0.01 && x <= a4Layout.width - a4Layout.margin + 0.01, 'Text stays within horizontal margins');

@@ -57,7 +57,7 @@ export async function createTransactionReceipt(data: TrackerData, withdrawal: Wi
   const file = await createSingleA4Document(content.title, content.blocks);
   const reference = content.model.returnReference || content.model.reference;
   const filename = `OG6_${kind === 'return' ? 'Return' : 'Withdrawal'}_Receipt_${reference.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
-  return { filename, bytes: file.bytes, base64: file.base64 };
+  return { filename, bytes: file.bytes, base64: file.base64, preview: file.preview };
 }
 export async function transactionPrintHtml(data: TrackerData, withdrawal: Withdrawal, kind: ReceiptKind, returnReference?: string): Promise<string> {
   const content = transactionReceiptContent(data, withdrawal, kind, returnReference);
