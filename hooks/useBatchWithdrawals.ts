@@ -4,6 +4,7 @@ import { useTracker } from './useTracker';
 import type { BatchLine } from '@/services/movements';
 import { buildBatch, remainingQuantity, assetCapacity } from '@/services/movements';
 import type { Signature } from '@/services/tracker';
+import { assetStatus } from '@/services/tracker';
 import { exportBatchReceipt } from '@/services/batchReceipts';
 export function useBatchWithdrawals() {
   const tracker = useTracker(); const [mode, setMode] = useState<'closed' | 'create' | 'review' | 'receipt' | 'return' | 'return-review'>('closed');
@@ -12,7 +13,10 @@ export function useBatchWithdrawals() {
   const [releaser, setReleaser] = useState(''); const [receiver, setReceiverValue] = useState(''); const [signature, setSignatureValue] = useState<Signature>([]); const [saved, setSaved] = useState(false);
   const [withdrawalAt, setWithdrawalAt] = useState(new Date().toISOString()); const [dueAt, setDueAt] = useState(new Date(Date.now() + 86400000).toISOString()); const [remarks, setRemarks] = useState('');
   const [returning, setReturning] = useState(''); const [receiving, setReceiving] = useState(''); const [condition, setCondition] = useState(''); const [returnRemarks, setReturnRemarks] = useState(''); const [returnQuantities, setReturnQuantities] = useState<Record<string, string>>({}); const [returnReference, setReturnReference] = useState('');
-  // Display feedback must never overwrite tracker.status(assetId), called by inventory/receipt rows.
+  // A separately named, locally constructed callback cannot be shadowed by
+  // feedback or a tracker-object spread. Use the authoritative withdrawal data.
+  const getEquipmentStatus = useCallback((assetId: string) => assetStatus(assetId, tracker.data.withdrawals, tracker.now), [tracker.data.withdrawals, tracker.now]);
+  // Display feedback remains a string and is never invoked by list rows.
   const [error, setError] = useState(''); const [statusMessage, setStatusMessage] = useState(''); const [working, setWorking] = useState(false); const guard = useRef(false);
   const available = useMemo(() => tracker.assets.filter(a => `${a.name} ${a.serial} ${a.notes}`.toLowerCase().includes(query.toLowerCase())), [tracker.assets, query]);
   const batches = tracker.data.batches || []; const batch = batches.find(b => b.id === batchId); const batchItems = tracker.data.withdrawals.filter(w => batch?.withdrawalIds.includes(w.id));
@@ -40,5 +44,6 @@ export function useBatchWithdrawals() {
   async function confirmReturn() { if (guard.current) return; guard.current = true; setWorking(true); setError(''); try { await tracker.returnBatch({ requestId, items: returnLines(), returning, receiving, condition, remarks: returnRemarks }); setReturnReference(requestId); setMode('receipt'); setStatusMessage('Return recorded. Unreturned quantities remain OUT and monitored.'); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to record return.'); } finally { guard.current = false; setWorking(false); } }
   async function exportReceipt() { if (guard.current) return; guard.current = true; setWorking(true); setError(''); try { setStatusMessage(await exportBatchReceipt(tracker.data, batchId, returnReference || undefined)); } catch (e) { setError(e instanceof Error ? e.message : 'Unable to export receipt.'); } finally { guard.current = false; setWorking(false); } }
   const close = useCallback(() => { if (!guard.current) setMode('closed'); }, []);
-  return { ...tracker, status: tracker.status, mode, setMode, items, query, setQuery, requestId, batchId, available, batches, batch, batchItems, begin, toggle, changeQuantity, manualName, setManualName, manualSerial, setManualSerial, manualDescription, setManualDescription, manualQuantity, setManualQuantity, addManual, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, remarks, setRemarks, error, statusMessage, working, review, submit, viewBatch, beginReturn, returning, setReturning, receiving, setReceiving, condition, setCondition, returnRemarks, setReturnRemarks, returnQuantities, changeReturn, selectAllReturns, reviewReturn, confirmReturn, returnReference, setReturnReference, exportReceipt, close, remainingQuantity, assetCapacity };
+  // Explicit UI contract: do not spread tracker properties into this form model.
+  return { colors: tracker.colors, data: tracker.data, busy: tracker.busy, loaded: tracker.loaded, getEquipmentStatus, mode, setMode, items, query, setQuery, requestId, batchId, available, batches, batch, batchItems, begin, toggle, changeQuantity, manualName, setManualName, manualSerial, setManualSerial, manualDescription, setManualDescription, manualQuantity, setManualQuantity, addManual, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, remarks, setRemarks, error, statusMessage, working, review, submit, viewBatch, beginReturn, returning, setReturning, receiving, setReceiving, condition, setCondition, returnRemarks, setReturnRemarks, returnQuantities, changeReturn, selectAllReturns, reviewReturn, confirmReturn, returnReference, setReturnReference, exportReceipt, close, remainingQuantity, assetCapacity };
 }

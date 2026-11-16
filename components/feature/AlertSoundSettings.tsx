@@ -26,6 +26,7 @@ export const AlertSoundSettings = memo(function AlertSoundSettings({ channel }: 
       {m.selected ? <View style={styles.actions}><Button title={`Replace ${m.label} sound`} secondary icon="swap-horizontal-outline" onPress={m.open} disabled={m.disabled} /><Button title={`Remove ${m.label} sound`} danger icon="trash-outline" onPress={m.requestRemove} disabled={m.disabled} loading={m.removing} /></View> : null}
       {m.previewPlaying ? <Button title={`Stop ${m.label} preview`} secondary icon="stop-circle-outline" onPress={() => void m.stop()} disabled={m.removing} /> : null}
       <VolumeControl label={`${m.label} volume`} value={m.volume} onChange={m.changeVolume} onSave={value => void m.saveVolume(value)} disabled={m.disabled} />
+      {m.playback.ready && m.playback.backend === 'MediaPlayer' ? <Text selectable style={[styles.helper, { color: c.primary }]}>VERIFIED ANDROID ENGINE · MediaPlayer</Text> : null}
       {m.selected && m.playback.configuring ? <Text style={[styles.helper, { color: c.primary }]}>Loading {channel} sound…</Text> : null}
       {m.selected && m.browser ? <Text style={[styles.helper, { color: m.playback.unlocked ? c.primary : c.warning }]}>{m.playback.unlocked ? `${m.label.toUpperCase()} BROWSER AUDIO ENABLED` : `${m.label.toUpperCase()} BROWSER AUDIO BLOCKED · USE PREVIEW OR TEST`}</Text> : null}
       {!m.visible ? <ErrorText message={m.error || m.playback.error} /> : null}

@@ -3,6 +3,7 @@
     "expo-av": "./mocks/expoAudio.ts",
     "react-native": "./mocks/reactNative.ts",
     "../services/soundClips": "../services/soundClips.ts",
+    "../services/audioLoadOptions": "../services/audioLoadOptions.ts",
     "../services/alertSoundValidation": "../services/alertSoundValidation.ts",
     "../services/authorizedAlertSound": "./mocks/alertSoundFiles.ts"
   }

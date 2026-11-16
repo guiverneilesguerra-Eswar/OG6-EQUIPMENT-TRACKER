@@ -8,6 +8,7 @@ import { NameDirectory } from '@/components/feature/NameDirectory';
 import { useSettings } from '@/hooks/useSettings';
 import { useResponsive } from '@/hooks/useResponsive';
 import { radius, spacing, type, leading, density } from '@/constants/theme';
+import { androidFixRevision } from '@/constants/runtimeRevision';
 export default function SettingsPage() {
   const m = useSettings(); const c = m.colors; const s = m.data.settings; const { contentWidth } = useResponsive(); const tablet = contentWidth >= 700;
   return <Screen title="SYSTEM SETTINGS" icon="settings-outline">
@@ -20,6 +21,8 @@ export default function SettingsPage() {
           <View style={[styles.preview, { backgroundColor: c.surfaceAlt, borderColor: c.borderBright }]}><View style={styles.previewTop}><View style={[styles.previewDot, { backgroundColor: c.primary }]} /><Text style={[styles.previewText, { color: c.text }]}>OG6 COMMAND CONSOLE</Text></View><View style={[styles.previewLine, { backgroundColor: c.border }]} /><View style={styles.previewStatuses}><View style={[styles.previewSwatch, { backgroundColor: c.successBg, borderColor: c.success }]}><Text style={[styles.previewText, { color: c.success }]}>IN</Text></View><View style={[styles.previewSwatch, { backgroundColor: c.blueBg, borderColor: c.primary }]}><Text style={[styles.previewText, { color: c.primary }]}>OUT</Text></View><View style={[styles.previewSwatch, { backgroundColor: c.dangerBg, borderColor: c.danger }]}><Text style={[styles.previewText, { color: c.danger }]}>OVERDUE</Text></View></View></View>
         </Card>
         <Card style={styles.card}><View style={styles.sectionHeader}><View style={[styles.icon, { backgroundColor: c.blueBg, borderColor: c.border }]}><Ionicons name="shield-checkmark-outline" size={25} color={c.primary} /></View><Text style={[styles.title, { color: c.text }]}>ACCESS & DATA PROTECTION</Text></View>
+          <Text selectable style={[styles.helper, { color: c.primary }]}>RUNTIME REVISION · {androidFixRevision}</Text>
+          <Text style={[styles.helper, { color: c.subtle }]}>If this revision is missing on Android, fully close and reopen the app with the updated code, or install the updated APK over the existing app. Do not uninstall or clear storage; records stay on this device.</Text>
           <Text style={[styles.settingLabel, { color: c.subtle }]}>WORKSPACE PREVIEW ROLE</Text><Chips options={['OPERATOR', 'VIEWER']} selected={s.role.toUpperCase()} onSelect={value => void m.save({ role: value === 'OPERATOR' ? 'operator' : 'viewer' })} />
           <Text style={[styles.helper, { color: c.subtle }]}>Preview roles are not authentication or an access-security boundary.</Text>
           <View style={[styles.securityNote, { backgroundColor: c.blueBg, borderColor: c.border }]}><Ionicons name="lock-closed-outline" size={20} color={c.primary} /><Text style={[styles.noteText, { color: c.subtle }]}>Equipment edits and deletion require their separate server-verified passwords and an internet connection. Deletion uses final confirmation and soft archival, retaining records and audit history.</Text></View>

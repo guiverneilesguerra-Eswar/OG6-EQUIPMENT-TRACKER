@@ -2,16 +2,17 @@ import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import { Platform } from 'react-native';
 import { AlertSoundKind, AudioChannel, clampVolume, soundChannel, soundPriority } from './soundClips';
 import { AuthorizedAlertSound, validateAlertSoundDuration } from './alertSoundValidation';
+import { verifyDecodedAudioBackend, type VerifiedAudioBackend } from './audioLoadOptions';
 import { loadDecodedAlertSound, releaseAuthorizedAlertSound, resolveAuthorizedAlertSound } from './authorizedAlertSound';
 
-export interface ChannelAudioState { ready: boolean; unlocked: boolean; error: string; requiresUpload: boolean; configuring: boolean; sourceId: string | null }
+export interface ChannelAudioState { ready: boolean; unlocked: boolean; error: string; requiresUpload: boolean; configuring: boolean; sourceId: string | null; backend: VerifiedAudioBackend | null }
 export interface AudioState { notification: ChannelAudioState; alarm: ChannelAudioState; playing: AlertSoundKind | null; testPlayback: boolean }
 export interface PlaybackResult { ok: boolean; reason: 'started' | 'blocked' | 'muted' | 'busy' | 'cancelled' | 'failed'; message: string }
 interface Job { kind: AlertSoundKind; sourceId: string; volume: number; userInitiated: boolean; cancelled: boolean; resolve: (result: PlaybackResult) => void }
 interface Active { sound: Audio.Sound; job: Job; watchdog: ReturnType<typeof setTimeout> | null }
 type AudioScope = 'all' | AudioChannel | 'overdue';
 interface Slot { selection: AuthorizedAlertSound | null; heldSourceId: string | null; clip: Audio.Sound | null; prepared: Promise<void> | null; configuration: Promise<void> | null; generation: number; initialized: boolean }
-const initialChannel = (): ChannelAudioState => ({ ready: false, unlocked: Platform.OS !== 'web', error: '', requiresUpload: true, configuring: false, sourceId: null });
+const initialChannel = (): ChannelAudioState => ({ ready: false, unlocked: Platform.OS !== 'web', error: '', requiresUpload: true, configuring: false, sourceId: null, backend: null });
 const initialSlot = (): Slot => ({ selection: null, heldSourceId: null, clip: null, prepared: null, configuration: null, generation: 0, initialized: false });
 let state: AudioState = { notification: initialChannel(), alarm: initialChannel(), playing: null, testPlayback: false };
 const slots: Record<AudioChannel, Slot> = { notification: initialSlot(), alarm: initialSlot() };
@@ -62,7 +63,7 @@ export function configureAlertAudio(channel: AudioChannel, selection?: Authorize
   }
   const previousId = slot.selection?.id; const token = ++slot.generation;
   slot.initialized = true; slot.selection = next;
-  publishChannel(channel, { ready: false, configuring: true, sourceId: next?.id ?? null, requiresUpload: !next, error: '', unlocked: Platform.OS !== 'web' });
+  publishChannel(channel, { ready: false, backend: null, configuring: true, sourceId: next?.id ?? null, requiresUpload: !next, error: '', unlocked: Platform.OS !== 'web' });
   cancelJobs(channel);
   const task = (async () => {
     await exclusive(async () => {
@@ -92,8 +93,11 @@ export function prepareAudio(channel: AudioChannel): Promise<void> {
     const uri = await resolveAuthorizedAlertSound(selection);
     const loaded = await loadDecodedAlertSound(uri, 1); const sound = loaded.sound;
     if (token !== slot.generation) { await sound.unloadAsync(); throw new Error('Sound selection changed.'); }
-    try { validateAlertSoundDuration(loaded.status.isLoaded ? loaded.status.durationMillis : undefined); }
-    catch (error) { await sound.unloadAsync(); throw error; }
+    let backend: VerifiedAudioBackend;
+    try {
+      backend = verifyDecodedAudioBackend(Platform.OS, loaded.status);
+      validateAlertSoundDuration(loaded.status.isLoaded ? loaded.status.durationMillis : undefined);
+    } catch (error) { await sound.unloadAsync().catch(() => {}); throw error; }
     slot.clip = sound;
     sound.setOnPlaybackStatusUpdate(status => {
       if (active?.sound !== sound) return;
@@ -104,12 +108,12 @@ export function prepareAudio(channel: AudioChannel): Promise<void> {
         void exclusive(async () => { if (active?.sound === sound) await stopActive(); }).then(pump).catch(() => {});
       }
     });
-    publishChannel(channel, { ready: true, error: '' });
+    publishChannel(channel, { ready: true, backend, error: '' });
   })();
   slot.prepared = task;
   void task.catch(error => {
     if (slot.prepared === task) slot.prepared = null;
-    if (token === slot.generation) publishChannel(channel, { ready: false, error: error instanceof Error ? error.message : 'Unable to load this sound. Replace it or retry its preview.' });
+    if (token === slot.generation) publishChannel(channel, { ready: false, backend: null, error: error instanceof Error ? error.message : 'Unable to load this sound. Replace it or retry its preview.' });
   });
   return task;
 }
@@ -121,7 +125,7 @@ async function stopActive() {
   catch {
     try { await previous.sound.unloadAsync(); } catch {}
     const channel = soundChannel(previous.job.kind); const slot = slots[channel];
-    if (slot.clip === previous.sound) { slot.clip = null; slot.prepared = null; publishChannel(channel, { ready: false }); }
+    if (slot.clip === previous.sound) { slot.clip = null; slot.prepared = null; publishChannel(channel, { ready: false, backend: null }); }
   }
   if (active === previous) { active = null; publish({ playing: null, testPlayback: false }); }
 }
@@ -208,7 +212,7 @@ export async function disposeAudio() {
       if (slot.selection) ids.add(slot.selection.id);
       if (slot.heldSourceId) ids.add(slot.heldSourceId);
       slot.clip = null; slot.prepared = null; slot.heldSourceId = null;
-      publishChannel(channel, { ready: false, unlocked: Platform.OS !== 'web' });
+      publishChannel(channel, { ready: false, backend: null, unlocked: Platform.OS !== 'web' });
     }
     ids.forEach(releaseAuthorizedAlertSound);
     publish({ playing: null, testPlayback: false });

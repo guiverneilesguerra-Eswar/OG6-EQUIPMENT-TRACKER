@@ -10,6 +10,7 @@ Deno.test('independent audio sources, activation, live volumes, cancellation and
   try {
     await Promise.all([configureAlertAudio('notification', selection('n1')), configureAlertAudio('alarm', selection('a1'))]);
     equal(getAudioState().notification.sourceId, 'n1'); equal(getAudioState().alarm.sourceId, 'a1');
+    equal(getAudioState().notification.backend, 'platform-default'); equal(getAudioState().alarm.backend, 'platform-default');
     equal((await playAlert('withdrawal', 100)).reason, 'blocked');
     equal((await playAlert('notification', 30, true)).ok, true);
     equal(getAudioState().notification.unlocked, true); equal(getAudioState().alarm.unlocked, false);
@@ -30,12 +31,12 @@ Deno.test('independent audio sources, activation, live volumes, cancellation and
     equal((await playAlert('notification', 80, true)).reason, 'busy');
     await configureAlertAudio('alarm', null);
     equal(playing()?.uri, 'fixture://n2'); equal(getAudioState().notification.sourceId, 'n2');
-    equal(getAudioState().alarm.requiresUpload, true);
+    equal(getAudioState().alarm.requiresUpload, true); equal(getAudioState().alarm.backend, null);
     await stopSound();
     let missingRejected = false;
     try { await configureAlertAudio('alarm', selection('missing')); }
     catch (error) { missingRejected = true; if (!(error instanceof Error) || !error.message.includes('missing')) throw error; }
-    equal(missingRejected, true);
+    equal(missingRejected, true); equal(getAudioState().alarm.backend, null);
     equal(getAudioState().notification.ready, true);
     equal((await playAlert('return', 100)).ok, true); await stopSound();
     await configureAlertAudio('alarm', selection('a2'));
@@ -51,5 +52,8 @@ Deno.test('independent audio sources, activation, live volumes, cancellation and
     await configureAlertAudio('alarm', null);
     equal(releasedIds.filter(id => id === 'legacy-shared').length, before + 1);
     equal(maximumConcurrentPlayback, 1);
-  } finally { await disposeAudio(); }
+  } finally {
+    await disposeAudio();
+    equal(getAudioState().notification.backend, null); equal(getAudioState().alarm.backend, null);
+  }
 });

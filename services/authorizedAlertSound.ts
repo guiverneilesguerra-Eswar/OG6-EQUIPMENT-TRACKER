@@ -2,7 +2,7 @@ import { Platform, Linking } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
-import { getAlertSoundInitialStatus } from './audioLoadOptions';
+import { getAlertSoundInitialStatus, verifyDecodedAudioBackend } from './audioLoadOptions';
 import { randomUUID } from 'expo-crypto';
 import { decode, encode } from 'base64-arraybuffer';
 import { AuthorizedAlertSound, alertSoundLimits, alertSoundReference, validateAlertSoundBytes, validateAlertSoundDuration } from './alertSoundValidation';
@@ -69,9 +69,18 @@ export function loadDecodedAlertSound(uri: string, volume = 0): Promise<Awaited<
     const timer = setTimeout(() => { settled = true; reject(new Error('Audio decoding timed out. Choose a supported MP3 or PCM WAV and retry.')); }, 30000);
     // Apply to upload probes, restored clips and both playback slots. Choosing
     // MediaPlayer only after load would leave the crashing ExoPlayer in place.
-    void Audio.Sound.createAsync({ uri }, getAlertSoundInitialStatus(Platform.OS, volume)).then(result => {
+    void Audio.Sound.createAsync({ uri }, getAlertSoundInitialStatus(Platform.OS, volume)).then(async result => {
       if (settled) { void result.sound.unloadAsync().catch(() => {}); return; }
-      settled = true; clearTimeout(timer); resolve(result);
+      settled = true; clearTimeout(timer);
+      try {
+        verifyDecodedAudioBackend(Platform.OS, result.status);
+        resolve(result);
+      } catch (error) {
+        // Unsupported native builds must fail visibly instead of caching or
+        // playing an unverified ExoPlayer. Do not delete the committed file.
+        await result.sound.unloadAsync().catch(() => {});
+        reject(error);
+      }
     }, () => {
       if (settled) return;
       settled = true; clearTimeout(timer); reject(new Error('The file cannot be decoded as supported MP3/WAV audio. The previous sound selection is unchanged.'));

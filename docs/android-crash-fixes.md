@@ -4,7 +4,7 @@
 
 `useTracker()` exports `status(assetId)` as a function. The batch hook spread that tracker object and then exported a local string also named `status`. Initially it was `''`. An inventory FlatList row called `m.status(a.id)`, therefore invoking an empty string. This is a hook property collision, not a FlatList or Hermes defect.
 
-The batch hook now explicitly retains `status: tracker.status` and exposes feedback as `statusMessage`. Create/reset, successful withdrawal, return and receipt-export feedback all use `setStatusMessage`. The banner renders the message; inventory availability and receipt badges continue using the actual status function. No status checks are disabled or replaced with a default IN state.
+R2 removes the generic `status` property and the tracker-object spread from the batch UI model entirely. The hook explicitly exports `getEquipmentStatus`, a memoized callback to the existing `assetStatus` service using current withdrawal records and the tracker clock. Inventory availability and receipt badges use this separate callback. Feedback remains `statusMessage`; it is rendered only as text. No status checks are disabled or replaced with a default IN state. Single withdrawals and the underlying transaction/availability rules are unchanged.
 
 ## 2. Native `Player is accessed on the wrong thread`
 
@@ -13,6 +13,25 @@ The application already uses expo-av for audio. Its default Android ExoPlayer ba
 All audio decoder creation goes through `loadDecodedAlertSound`. That loader now uses a shared initial-status policy selecting Android's `MediaPlayer` before `Audio.Sound.createAsync`. Backend changes after loading have no effect, and JavaScript try/catch, requestAnimationFrame or promise queues cannot move ExoPlayer's native release operation onto the main thread.
 
 This covers upload/restore probes and both saved playback channels, including late-result cleanup. It does not add a second player library, modify native dependencies, or silently fall back to ExoPlayer on decode errors. iOS/browser behavior remains unchanged. MP3/PCM WAV validation, serialization, cancellation, acknowledgement history, stored files and saved gains remain intact.
+
+## R2: verify the delivered code and actual native engine
+
+The second report contains the same `renderItem@250942:42` and component bundle positions as the first, although its cache directory differs. The source inspected here already had the first callback/MediaPlayer fix. This is consistent with an older bundle or retained player being used, but bundle positions alone do not prove that. A complete native Java stack is still needed to identify a persistent native error.
+
+R2 adds **ANDROID FIX R2** in Settings → Access & Data Protection and the batch modal. This is a code revision indicator, not a database migration or a change to package identity. If that text is absent, the device has not received this code; additional source edits cannot repair the bundle it is running.
+
+The shared decoder now verifies `androidImplementation` returned by native code, not just the creation options. Only a loaded **MediaPlayer** decoder may be accepted on Android. Upload/restore validation and both playback slots share this check; unverified/unloaded decoders are rejected and unloaded with visible guidance, not silently played as ExoPlayer. The Settings sound panel shows **VERIFIED ANDROID ENGINE · MediaPlayer** only after a selected clip has loaded and the native response has passed verification. No sound selected means no engine indicator is expected. Readiness resets clear this indicator. iOS/web keep their existing backend.
+
+JavaScript guards cannot catch every native fatal exception or move native release onto the main thread. This check confirms which backend the updated app loads; it does not rewrite a faulty native host or guarantee an old retained ExoPlayer can be safely released.
+
+### Safe Android retest
+
+1. Export a complete backup before any installation change if possible. Do not clear storage or uninstall.
+2. Fully close the app process, then reopen it with the latest OnSpace preview/code. For an installed APK, generate the updated APK and install over the existing app using the same application identity/signing key.
+3. Check **ANDROID FIX R2** in Settings and the batch dialog before testing. Missing revision means the new code is not running.
+4. With an existing selected MP3/WAV, confirm the verified MediaPlayer engine appears in its sound panel. Preview/test each channel, then stop, background/foreground and repeat.
+5. Open the batch inventory list, search and select items; unavailable items must remain disabled. Save/reopen a test batch and perform partial/full returns; feedback must not change the equipment status callback.
+6. If either crash remains with R2 visible, provide fresh logs including all Java `at ...` frames, especially `expo.modules.*`, the revision/engine indicators, and whether this is OnSpace phone preview or an installed APK. Live Preview network logs cannot verify the Android native runtime.
 
 ## Verification status
 
@@ -24,7 +43,7 @@ From an exported development environment:
 npx tsc --noEmit
 deno test --no-check tests/audioLoadOptions.test.ts
 deno test --allow-read=hooks,components,services tests/androidCrashRegression.test.ts
-deno test --no-check --import-map=tests/audio-player-import-map.json tests/audioPlayback.test.ts
+deno test --no-check --import-map=tests/audio-player-import-map.json tests/audioLoadOptions.test.ts tests/audioPlayback.test.ts
 deno test --no-check --import-map=tests/upgrade-import-map.json tests/movements.test.ts
 ```
 
