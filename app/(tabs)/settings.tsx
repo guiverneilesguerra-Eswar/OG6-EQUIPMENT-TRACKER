@@ -5,6 +5,7 @@ import { Button, Card, Chips, ErrorText } from '@/components/ui/Controls';
 import { AlertSoundSettings } from '@/components/feature/AlertSoundSettings';
 import { BackupManagement } from '@/components/feature/BackupManagement';
 import { NameDirectory } from '@/components/feature/NameDirectory';
+import { PushNotificationSettings } from '@/components/feature/PushNotificationSettings';
 import { useSettings } from '@/hooks/useSettings';
 import { useResponsive } from '@/hooks/useResponsive';
 import { radius, spacing, type, leading, density } from '@/constants/theme';
@@ -17,7 +18,7 @@ export default function SettingsPage() {
       <View style={[styles.column, tablet ? styles.wideColumn : null]}>
         <Card><View style={styles.sectionHeader}><View style={[styles.icon, { backgroundColor: c.blueBg, borderColor: c.border }]}><Ionicons name="contrast-outline" size={25} color={c.primary} /></View><Text style={[styles.title, { color: c.text }]}>APPEARANCE</Text></View>
           <Chips options={['LIGHT MODE', 'DARK MODE', 'SYSTEM DEFAULT']} selected={s.theme === 'system' ? 'SYSTEM DEFAULT' : s.theme === 'light' ? 'LIGHT MODE' : 'DARK MODE'} onSelect={value => void m.save({ theme: value === 'SYSTEM DEFAULT' ? 'system' : value === 'LIGHT MODE' ? 'light' : 'dark' })} />
-          <Text style={[styles.helper, { color: c.subtle }]}>Navy-and-blue OG6 command identity · {m.resolvedTheme.toUpperCase()} appearance active. System Default follows device appearance automatically.</Text>
+          <Text style={[styles.helper, { color: c.subtle }]}>Black-and-yellow OG6 command identity · {m.resolvedTheme.toUpperCase()} appearance active. System Default follows device appearance automatically.</Text>
           <View style={[styles.preview, { backgroundColor: c.surfaceAlt, borderColor: c.borderBright }]}><View style={styles.previewTop}><View style={[styles.previewDot, { backgroundColor: c.primary }]} /><Text style={[styles.previewText, { color: c.text }]}>OG6 COMMAND CONSOLE</Text></View><View style={[styles.previewLine, { backgroundColor: c.border }]} /><View style={styles.previewStatuses}><View style={[styles.previewSwatch, { backgroundColor: c.successBg, borderColor: c.success }]}><Text style={[styles.previewText, { color: c.success }]}>IN</Text></View><View style={[styles.previewSwatch, { backgroundColor: c.blueBg, borderColor: c.primary }]}><Text style={[styles.previewText, { color: c.primary }]}>OUT</Text></View><View style={[styles.previewSwatch, { backgroundColor: c.dangerBg, borderColor: c.danger }]}><Text style={[styles.previewText, { color: c.danger }]}>OVERDUE</Text></View></View></View>
         </Card>
         <Card style={styles.card}><View style={styles.sectionHeader}><View style={[styles.icon, { backgroundColor: c.blueBg, borderColor: c.border }]}><Ionicons name="shield-checkmark-outline" size={25} color={c.primary} /></View><Text style={[styles.title, { color: c.text }]}>ACCESS & DATA PROTECTION</Text></View>
@@ -39,9 +40,10 @@ export default function SettingsPage() {
         <Text style={[styles.helper, { color: c.subtle }]}>Test buttons play one clip even when automatic alerts are disabled. Start at a comfortable device volume; 100% cannot override hardware volume, Do Not Disturb, or a muted browser tab.</Text>
         <View style={[styles.divider, { backgroundColor: c.border }]} /><Text style={[styles.settingLabel, { color: c.subtle }]}>DUE-SOON WARNING WINDOW</Text>
         <Chips options={['12 HOURS', '24 HOURS', '48 HOURS']} selected={`${s.warningHours} HOURS`} onSelect={value => void m.save({ warningHours: parseInt(value, 10) })} />
-        <View style={[styles.information, { backgroundColor: c.warningBg, borderColor: c.warning }]}><Ionicons name="information-circle-outline" size={20} color={c.warning} /><Text style={[styles.noteText, { color: c.warning }]}>Alerts work while this app is open and active. Background push is not configured. In browsers, preview or test each selected sound once per session to enable its audio. Files stay on this device/browser after restart; clearing app storage removes them. All playback is serialized without overlap.</Text></View>
+        <View style={[styles.information, { backgroundColor: c.warningBg, borderColor: c.warning }]}><Ionicons name="information-circle-outline" size={20} color={c.warning} /><Text style={[styles.noteText, { color: c.warning }]}>Existing audio alarms work while this app is open. Configure separate background push below; external server scheduling and device setup are required. In browsers, preview or test each selected sound once per session to enable its audio. Files stay on this device/browser after restart; clearing app storage removes them. All playback is serialized without overlap.</Text></View>
       </Card>
     </View>
+    <PushNotificationSettings />
     <NameDirectory />
     <BackupManagement />
   </Screen>;

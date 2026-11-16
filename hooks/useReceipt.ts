@@ -3,6 +3,7 @@ import { Asset, Withdrawal } from '@/services/tracker';
 import { createReceipt, downloadReceipt, ReceiptFile, ReceiptKind, shareReceipt } from '@/services/receipts';
 import { printTransactionReceipt } from '@/services/transactionReceipts';
 import { useTracker } from './useTracker';
+import type { PdfOptions } from '@/constants/pdf';
 
 export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKind, returnReference?: string) {
   const { data } = useTracker();
@@ -32,9 +33,9 @@ export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKi
     try {
       const outcome = await (share ? shareReceipt(file) : downloadReceipt(file));
       if (!mounted.current) return;
-      setMessage(outcome === 'download-fallback' ? 'File sharing is unavailable in this browser. PDF downloaded; attach it to your email or message.'
-        : outcome === 'downloaded' ? 'PDF downloaded. It is ready to attach to an email or message.'
-        : outcome === 'saved' ? 'PDF saved in this app’s documents. Use Share / send PDF to send it to another app.'
+      setMessage(outcome === 'download-fallback' ? 'File sharing is unavailable in this browser. Browser download requested; attach the PDF once saved to your email or message.'
+        : outcome === 'downloaded' ? 'Browser download requested; the browser controls the destination and completion.'
+        : outcome === 'saved' ? 'Android confirmed a file write to the folder you selected.'
         : outcome === 'share-sheet' ? 'Share sheet opened. Delivery is handled by the app you select.'
         : outcome === 'shared' ? 'PDF handed to the selected app for sharing.' : 'Sharing cancelled. Your receipt is still ready.');
     } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : 'Unable to export the PDF receipt. Please try again.'); }
@@ -48,5 +49,6 @@ export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKi
     finally { locked.current = false; if (mounted.current) setPrinting(false); }
   }, [receiptData, withdrawal, kind, returnReference]);
   const retry = useCallback(() => setAttempt(value => value + 1), []);
-  return { file, preparing, delivering, printing, error, message, retry, deliver, print };
+  const exportFile = useCallback((options: PdfOptions) => createReceipt(asset, withdrawal, kind, receiptData, returnReference, options), [asset, withdrawal, kind, receiptData, returnReference]);
+  return { file, preparing, delivering, printing, error, message, retry, deliver, print, exportFile };
 }
