@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Asset, Withdrawal, formatDate, manilaParts } from './tracker';
-import { palettes } from '@/constants/theme';
+import { documentPalette } from '@/constants/theme';
 import type { TrackerData } from './tracker';
 import { createTransactionReceipt } from './transactionReceipts';
 
@@ -21,7 +21,7 @@ export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: 
   const normal = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const generated = new Date().toISOString();
-  const c = palettes.light;
+  const c = documentPalette;
   const ink = pdfColor(c.text), blue = pdfColor(c.primary), subtle = pdfColor(c.subtle), lineColor = pdfColor(c.border);
   const title = kind === 'return' ? 'EQUIPMENT RETURN RECEIPT' : 'EQUIPMENT WITHDRAWAL RECEIPT';
   doc.setTitle(`${title} - ${withdrawal.id}`); doc.setAuthor('OG6 EQUIPMENT TRACKER'); doc.setCreator('OG6 EQUIPMENT TRACKER'); doc.setCreationDate(new Date(generated));

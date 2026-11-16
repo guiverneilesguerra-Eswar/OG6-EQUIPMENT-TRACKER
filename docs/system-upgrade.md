@@ -43,9 +43,9 @@ Backups contain sensitive personnel/equipment data and are **not encrypted**. Th
 
 ## Themes
 
-Settings provides Light Mode, Dark Mode and System Default. Both actual surface palettes use the restored navy-and-blue command identity with theme-specific contrast tokens. System Default reacts to the device color scheme. The preference remains in the existing settings snapshot.
+Settings now provides Navy, Midnight and System Default to honor the latest all-dark reference design. The existing `light`, `dark` and `system` preference keys are preserved, but both actual surface palettes are military-dark navy variants. System Default reacts to the device preference to select between them. No settings migration or operational record write is performed by this presentation update.
 
-Headers, navigation, dashboard metrics, inputs, dialogs, receipt controls, status badges and name/backup and unified withdrawal sections consume the resolved theme. Light mode does not display tactical dark wallpaper. Blue buttons use contrasting white labels. The reference tactical header and sidebar are visible in dark mode; the supplied Philippine Army 4ID G6 crest replaces the previous drawn emblem. Exported PDFs use the readable light document palette.
+Headers, navigation, dashboard metrics, inputs, dialogs, signature fields, receipt controls, status badges and name/backup and unified withdrawal sections consume shared semantic tokens. Tactical header and sidebar imagery remain visible in both variants. Blue buttons use contrasting white labels; the latest supplied Philippine Army 4ID G6 seal remains in the shared emblem. Exported PDFs and printable receipts use a separate readable paper document palette, not the dark application palette. See `docs/reference-theme-restoration.md` for the reference proportions and verification limits.
 
 ## Administrator verification
 

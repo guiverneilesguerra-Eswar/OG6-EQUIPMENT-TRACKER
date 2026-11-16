@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "onspace-app",
+    "name": "OG6 EQUIPMENT TRACKER",
     "slug": "onspace-app",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/philippine-army-4id-command-seal.png",
     "scheme": "onspaceapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -14,25 +14,25 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/philippine-army-4id-command-seal.png",
+        "backgroundColor": "#031426"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/logo.png"
+      "favicon": "./assets/philippine-army-4id-command-seal.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo.png",
-          "imageWidth": 200,
+          "image": "./assets/philippine-army-4id-command-seal.png",
+          "imageWidth": 112,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#031426"
         }
       ],
       "expo-web-browser",

@@ -1,4 +1,4 @@
-import { density, leading, type } from '../constants/theme.ts';
+import { density, layout, leading, type } from '../constants/theme.ts';
 import { getCompactDialogHeight, getCompactLayout } from '../services/compactLayout.ts';
 
 function check(condition: boolean, message: string) { if (!condition) throw new Error(message); }
@@ -20,8 +20,8 @@ Deno.test('normal phone, tablet and desktop layouts keep content within the view
     check(frame.contentWidth + frame.pagePadding * 2 + frame.sidebarWidth <= width, `Overflow at ${width}x${height}`);
     if (!frame.landscape) equal(frame.commandLayout, false);
     if (frame.tableActivities) {
-      const panelWidth = frame.contentWidth * (1 - 0.349) - density.cardGap - density.cardPadding * 2;
-      check(panelWidth >= 800, 'Activity table must fit its own card');
+      const panelWidth = (frame.contentWidth - layout.panelGap) * (1 - layout.railFraction) - density.cardPadding * 2;
+      check(panelWidth >= layout.activityTableMinWidth, 'Activity table must fit its own card');
     }
   }
 });
@@ -30,7 +30,8 @@ Deno.test('landscape sidebar behavior is preserved without forcing narrow activi
   equal(getCompactLayout(375, 667).commandLayout, false);
   equal(getCompactLayout(600, 375).commandLayout, true);
   equal(getCompactLayout(1024, 768).dashboardRail, true);
-  equal(getCompactLayout(1280, 800).tableActivities, false);
+  equal(getCompactLayout(1024, 576).tableActivities, true);
+  equal(getCompactLayout(1280, 800).tableActivities, true);
   equal(getCompactLayout(1920, 1080).tableActivities, true);
   equal(getCompactLayout(1024, 1366).commandLayout, false);
 });
