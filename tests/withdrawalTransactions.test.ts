@@ -38,7 +38,7 @@ Deno.test('confirmation rejects OUT, archived, duplicate, empty and excess quant
 Deno.test('partial return event affects only selected quantities and complete receipt keeps all original items', () => {
   const original = buildBatch(fixture(), input(), at, makeId).next;
   const battery = original.withdrawals.find(w => w.assetId === 'batteries')!; const radio = original.withdrawals.find(w => w.assetId === 'radio')!;
-  const form = { requestId: 'RET-1', items: [{ withdrawalId: battery.id, quantity: 2 }], returning: 'Jane Doe', receiving: 'John Doe', condition: 'Serviceable', remarks: 'Two batteries only', receivingSignature: [[{ x: 5, y: 5 }, { x: 15, y: 25 }, { x: 35, y: 30 }]] };
+  const form = { requestId: 'RET-1', items: [{ withdrawalId: battery.id, quantity: 2 }], returning: 'Jane Doe', receiving: 'John Doe', condition: 'Good', remarks: 'Two batteries only', returnSignature: [[{ x: 5, y: 5 }, { x: 15, y: 25 }, { x: 35, y: 30 }]] };
   validateReturnDraft(original, form, '2026-11-16T09:00:00.000Z');
   const partial = buildReturns(original, form, '2026-11-16T09:00:00.000Z', makeId);
   equal(remainingQuantity(partial.withdrawals.find(w => w.id === battery.id)!), 2);

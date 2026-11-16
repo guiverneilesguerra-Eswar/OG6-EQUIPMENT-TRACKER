@@ -19,8 +19,8 @@ interface CardProps { children: ReactNode; style?: StyleProp<ViewStyle> }
 export const Card = memo(function Card({ children, style }: CardProps) { const { colors: c } = useTracker(); return <View style={[styles.card, { backgroundColor: c.surfaceGlass, borderColor: c.borderBright, shadowColor: c.shadow }, style]}>{children}</View>; });
 interface BadgeProps { status: string }
 export const Badge = memo(function Badge({ status }: BadgeProps) {
-  const { colors: c } = useTracker(); const green = ['IN', 'RETURNED'].includes(status), red = status === 'OVERDUE', orange = ['DUE SOON', 'DUE TODAY'].includes(status), muted = ['UNAVAILABLE', 'ARCHIVED', 'UNSERVICEABLE', 'DAMAGE'].includes(status);
-  const color = green ? c.success : red ? c.danger : orange ? status === 'DUE TODAY' ? c.dueToday : c.dueSoon : muted ? c.muted : c.primary;
+  const { colors: c } = useTracker(); const green = ['IN', 'RETURNED'].includes(status), red = status === 'OVERDUE', orange = status === 'DUE SOON', muted = ['UNAVAILABLE', 'ARCHIVED'].includes(status);
+  const color = green ? c.success : red ? c.danger : orange ? c.warning : muted ? c.muted : c.primary;
   return <View style={[styles.badge, { borderColor: color, backgroundColor: green ? c.successBg : red ? c.dangerBg : orange ? c.warningBg : muted ? c.surfaceAlt : c.blueBg }]}><View style={[styles.dot, { backgroundColor: color }]} /><Text style={[styles.badgeText, { color }]}>{status}</Text></View>;
 });
 interface EmptyProps { title: string; message: string; icon?: keyof typeof Ionicons.glyphMap }

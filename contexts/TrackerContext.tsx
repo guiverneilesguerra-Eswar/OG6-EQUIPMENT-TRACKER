@@ -12,11 +12,10 @@ import { ArchiveApproval, ArchiveKind, applyArchive, archiveFingerprint, archive
 import { BatchInput, BatchRecord, ReturnMovementInput, NameRole, buildBatch, buildReturns, getNameDirectory, manageName, remainingQuantity } from '@/services/movements';
 import { validateDatabase, mergeDatabase, backupSummary } from '@/services/backupValidation';
 import { authorizeMaintenance } from '@/services/maintenanceAuthorization';
-import { synchronizePush } from '@/services/pushNotifications';
 export interface WithdrawalInput { requestId?: string; assetId: string; manual: boolean; name: string; serial: string; manualNotes: string; releaser: string; receiver: string; signature: Signature; withdrawalAt: string; dueAt: string; notes: string }
-export interface ReturnInput { returning: string; receiving: string; condition: string; remarks: string; receivingSignature: Signature }
+export interface ReturnInput { returning: string; receiving: string; condition: string; remarks: string; returnSignature: Signature }
 interface TrackerValue {
-  data: TrackerData; now: number; loaded: boolean; error: string; busy: boolean; pushSyncError: string;
+  data: TrackerData; now: number; loaded: boolean; error: string; busy: boolean;
   retry: () => Promise<void>;
   addAsset: (name: string, serial: string, notes: string) => Promise<void>;
   importInventory: (preview: InventoryImportPreview, batchId: string) => Promise<InventoryImportResult>;
@@ -38,7 +37,7 @@ const makeId = (prefix: string) => `${prefix}-${randomUUID()}`;
 export function TrackerProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<TrackerData>(emptyData);
   const [now, setNow] = useState(Date.now()); const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [pushSyncError, setPushSyncError] = useState('');
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const current = useRef(data); const lock = useRef(false); const ready = useRef(false);
   async function retry() {
     if (lock.current) return;
@@ -57,22 +56,11 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
       const next = { ...transformed, alertKeys: Array.from(new Set([...(transformed.alertKeys || []), ...transformed.notices.filter(n => n.withdrawalId && (n.type === 'due' || n.type === 'overdue')).map(n => `${n.withdrawalId}:${n.type}`)])) };
       // One complete persisted snapshot: no partial batch or in-memory success before durable save.
       await saveData(next); current.current = next; setData(next); setNow(Date.now());
-      // Local transactions stay durable even offline. Retry remote cancellation/sync without undoing returns.
-      if (next.withdrawals !== data.withdrawals || next.assets !== data.assets || next.settings !== data.settings) {
-        await synchronizePush(next).then(() => setPushSyncError('')).catch(() => setPushSyncError('Records saved locally. Background reminder sync is pending; returned items may still alert until the server receives this return.'));
-      }
       if (sound && next.settings.enabled) { const channel = soundChannel(sound); if (channel === 'notification' || next.settings.alarmEnabled !== false) void playAlert(sound, channel === 'alarm' ? next.settings.alarmVolume : next.settings.notificationVolume); }
       return next;
     } finally { lock.current = false; setBusy(false); }
   }
   useEffect(() => { if (!loaded || lock.current) return; const next = alerts(current.current, now); if (next.length) void commit(d => ({ ...d, notices: [...next, ...d.notices] }), next.some(n => n.type === 'due') ? 'due' : undefined).catch(() => {}); }, [now, loaded, data.withdrawals, data.settings.enabled, data.settings.warningHours]);
-  useEffect(() => {
-    if (!loaded) return;
-    let active = true;
-    const sync = () => { void synchronizePush(current.current).then(() => { if (active) setPushSyncError(''); }).catch(() => { if (active) setPushSyncError('Background reminder sync is pending. Connect to the internet to stop reminders for returned equipment.'); }); };
-    sync(); const timer = setInterval(sync, 30000);
-    return () => { active = false; clearInterval(timer); };
-  }, [loaded]);
   function operator(d: TrackerData) { if (d.settings.role !== 'operator') throw new Error('Switch to the local operator workspace to record equipment movements.'); }
   async function addAsset(name: string, serial: string, notes: string) {
     await commit(d => {
@@ -189,5 +177,5 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
           : result.notices.map(n => !id || n.id === id ? { ...n, read: true, acknowledged: action === 'acknowledge' || action === 'dismiss' ? true : n.acknowledged } : n) };
     });
   }
-  return <TrackerContext.Provider value={{ data, now, loaded, error, busy, pushSyncError, retry, addAsset, importInventory, editAsset, withdraw, withdrawTransaction, returnEquipment, returnItems, prepareArchive, archiveRecord, restoreBackup, manageSavedName, updateSettings, acknowledgeOverdue, updateNotices }}>{children}</TrackerContext.Provider>;
+  return <TrackerContext.Provider value={{ data, now, loaded, error, busy, retry, addAsset, importInventory, editAsset, withdraw, withdrawTransaction, returnEquipment, returnItems, prepareArchive, archiveRecord, restoreBackup, manageSavedName, updateSettings, acknowledgeOverdue, updateNotices }}>{children}</TrackerContext.Provider>;
 }
