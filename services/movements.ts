@@ -59,7 +59,7 @@ export function buildBatch(data: TrackerData, input: BatchInput, at: string, mak
       }
     }
     if (!asset || asset.archivedAt) throw new Error('A selected equipment record is unavailable.');
-    if (seen.has(asset.id)) throw new Error('The same equipment cannot appear twice in a batch.');
+    if (seen.has(asset.id)) throw new Error('The same equipment cannot appear twice in a withdrawal transaction.');
     seen.add(asset.id);
     if (data.withdrawals.some(w => w.assetId === asset!.id && remainingQuantity(w) > 0)) throw new Error(`${asset.name} is already OUT or overdue. Return it first.`);
     if (line.quantity > assetCapacity(asset)) throw new Error(`${asset.name} has only ${assetCapacity(asset)} unit(s). Serialized legacy equipment has quantity 1.`);

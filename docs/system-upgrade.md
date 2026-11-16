@@ -8,15 +8,15 @@ Optional fields now include equipment-lot quantity, per-withdrawal quantities/sn
 
 ## Withdrawals and returns
 
-- Existing single withdrawal, signature and single return forms remain available.
-- Withdrawals also includes Batch Transactions, with inventory multi-selection and manual equipment entry.
+- The existing New equipment withdrawal form handles both single-item and multiple-item transactions, with signatures, inventory multi-selection and manual equipment entry. The separate Batch Transactions card, form and hook have been removed; see `docs/unified-withdrawals.md`.
+- Existing grouped withdrawal records remain accessible from individual equipment rows through Complete receipt and Return equipment.
 - Manual items are only registered during the final atomic save. Their quantity defines one inventory lot; serialized equipment remains quantity one.
 - New single and batch withdrawals share the same validation engine. A batch has one UUID-based reference and individual UUID-based withdrawal records, quantities, equipment snapshots and activity entries.
 - An item already OUT/overdue or archived cannot be released again. Quantity cannot exceed its inventory capacity. A partially returned lot stays OUT until all units from that withdrawal have returned; its availability is not split into concurrent withdrawals.
-- Review screens precede batch withdrawal and batch/partial return confirmation. Availability and return balances are rechecked under the provider's write lock.
+- Review screens precede standard withdrawal and partial/complete return confirmation. Availability and return balances are rechecked under the provider's write lock.
 - A return can select individual items and quantities; zero or blank skips an item. Every successful return creates an immutable return event with its own ID and a shared return reference. Previous partial return personnel, remarks and timestamps remain in that event history.
 - A complete return sets the final returned timestamp, completes alarm handling and allows another withdrawal. Partial returns do not invent a complete-return timestamp.
-- Batch and individual PDF receipts remain exportable/shareable. Batch return PDFs can be selected by return reference. Print exported PDFs with the platform's PDF viewer; direct printer integration is not configured.
+- Complete withdrawal PDFs contain every item under the transaction reference and remain exportable/shareable from the standard form and individual details. Return PDFs can be selected by event reference, including partial returns. Print complete receipt opens the platform/browser print dialog; downloaded PDFs can also be printed from a PDF viewer.
 - Excel withdrawal history adds batch reference and quantity columns while retaining the four existing worksheets.
 - Duplicate batch requests and duplicate return requests are no-ops. In-flight submission guards and a provider write lock prevent overlapping database mutations. No successful operation is reported until the full snapshot saves.
 
@@ -24,7 +24,7 @@ Optional fields now include equipment-lot quantity, per-withdrawal quantities/sn
 
 Releasers and receivers have independent persistent directories. Initial suggestions are derived from existing transaction history without editing historical personnel names. New names are appended only as part of a successfully saved transaction. Whitespace is collapsed and case differences are ignored when checking duplicates. Returning personnel populate the releaser directory and receiving personnel populate the receiver directory.
 
-Searchable suggestions appear in single and batch movement forms. Settings includes searchable name management. Edit/removal requires the existing server-held administrator password and an online verification for each action. Directory changes never rewrite old transactions; removed suggestions are not silently reseeded on restart. Reusing a removed name in a later successful transaction can add it again.
+Searchable suggestions appear in the unified standard withdrawal and return forms. Settings includes searchable name management. Edit/removal requires the existing server-held administrator password and an online verification for each action. Directory changes never rewrite old transactions; removed suggestions are not silently reseeded on restart. Reusing a removed name in a later successful transaction can add it again.
 
 ## Complete backups
 
@@ -45,7 +45,7 @@ Backups contain sensitive personnel/equipment data and are **not encrypted**. Th
 
 Settings provides Light Mode, Dark Mode and System Default. Both actual surface palettes use the restored navy-and-blue command identity with theme-specific contrast tokens. System Default reacts to the device color scheme. The preference remains in the existing settings snapshot.
 
-Headers, navigation, dashboard metrics, inputs, dialogs, receipt controls, status badges and new name/backup/batch sections consume the resolved theme. Light mode does not display tactical dark wallpaper. Blue buttons use contrasting white labels. The reference tactical header and sidebar are visible in dark mode; the supplied Philippine Army 4ID G6 crest replaces the previous drawn emblem. Exported PDFs use the readable light document palette.
+Headers, navigation, dashboard metrics, inputs, dialogs, receipt controls, status badges and name/backup and unified withdrawal sections consume the resolved theme. Light mode does not display tactical dark wallpaper. Blue buttons use contrasting white labels. The reference tactical header and sidebar are visible in dark mode; the supplied Philippine Army 4ID G6 crest replaces the previous drawn emblem. Exported PDFs use the readable light document palette.
 
 ## Administrator verification
 
@@ -71,7 +71,7 @@ Before release, use disposable test records/backup copies and verify:
 | Scenario | Expected result | Execution status |
 | --- | --- | --- |
 | Single withdrawal | One item OUT, signature/reference and receipt retained | Pending runtime/device verification |
-| Multiple batch withdrawal | One reference, distinct IDs and quantities, no partial save | Pending runtime/device verification |
+| Multiple-item standard withdrawal | One reference, distinct IDs and quantities, no partial save | Pending runtime/device verification |
 | Partial return | Event appended, remainder OUT and monitored | Pending runtime/device verification |
 | Complete return | Zero outstanding, final timestamp, equipment IN | Pending runtime/device verification |
 | Releaser suggestions | Search/select/new name and normalized duplicates | Pending runtime/device verification |

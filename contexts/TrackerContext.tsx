@@ -21,9 +21,9 @@ interface TrackerValue {
   importInventory: (preview: InventoryImportPreview, batchId: string) => Promise<InventoryImportResult>;
   editAsset: (id: string, name: string, serial: string, notes: string, password: string, requestId: string) => Promise<void>;
   withdraw: (input: WithdrawalInput) => Promise<Withdrawal>;
-  withdrawBatch: (input: BatchInput) => Promise<BatchRecord>;
+  withdrawTransaction: (input: BatchInput) => Promise<BatchRecord>;
   returnEquipment: (id: string, input: ReturnInput) => Promise<Withdrawal>;
-  returnBatch: (input: ReturnMovementInput) => Promise<void>;
+  returnItems: (input: ReturnMovementInput) => Promise<void>;
   prepareArchive: (kind: ArchiveKind, id: string, password: string) => Promise<ArchiveApproval>;
   archiveRecord: (approval: ArchiveApproval) => Promise<void>;
   restoreBackup: (incoming: TrackerData, mode: 'full' | 'merge', password: string, expectedBefore: string) => Promise<string>;
@@ -123,15 +123,15 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     }, 'return');
     const returned = next.withdrawals.find(w => w.id === id); if (!returned) throw new Error('The saved return record could not be found.'); return returned;
   }
-  async function withdrawBatch(input: BatchInput) {
+  async function withdrawTransaction(input: BatchInput) {
     const completed: { batch?: BatchRecord } = {};
     await commit(d => {
       operator(d); const result = buildBatch(d, input, new Date().toISOString(), makeId); completed.batch = result.batch;
-      return result.next === d ? d : { ...result.next, notices: [notice('success', 'Batch withdrawal recorded', `${result.batch.reference} · ${input.items.length} equipment records.`), ...d.notices] };
+      return result.next === d ? d : { ...result.next, notices: [notice('success', 'Withdrawal recorded', `${result.batch.reference} · ${input.items.length} equipment records.`), ...d.notices] };
     }, 'withdrawal');
-    if (!completed.batch) throw new Error('Saved batch was not found.'); return completed.batch;
+    if (!completed.batch) throw new Error('The saved withdrawal transaction was not found.'); return completed.batch;
   }
-  async function returnBatch(input: ReturnMovementInput) {
+  async function returnItems(input: ReturnMovementInput) {
     await commit(d => {
       operator(d); const result = buildReturns(d, input, new Date().toISOString(), makeId);
       return result === d ? d : { ...result, notices: [notice('success', 'Return recorded', `${input.requestId} · ${input.items.length} items processed.`), ...result.notices] };
@@ -177,5 +177,5 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
           : result.notices.map(n => !id || n.id === id ? { ...n, read: true, acknowledged: action === 'acknowledge' || action === 'dismiss' ? true : n.acknowledged } : n) };
     });
   }
-  return <TrackerContext.Provider value={{ data, now, loaded, error, busy, retry, addAsset, importInventory, editAsset, withdraw, withdrawBatch, returnEquipment, returnBatch, prepareArchive, archiveRecord, restoreBackup, manageSavedName, updateSettings, acknowledgeOverdue, updateNotices }}>{children}</TrackerContext.Provider>;
+  return <TrackerContext.Provider value={{ data, now, loaded, error, busy, retry, addAsset, importInventory, editAsset, withdraw, withdrawTransaction, returnEquipment, returnItems, prepareArchive, archiveRecord, restoreBackup, manageSavedName, updateSettings, acknowledgeOverdue, updateNotices }}>{children}</TrackerContext.Provider>;
 }

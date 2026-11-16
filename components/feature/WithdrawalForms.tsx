@@ -8,55 +8,115 @@ import { NameField } from '@/components/ui/NameField';
 import { SignaturePad } from './SignaturePad';
 import { ReceiptActions } from './ReceiptActions';
 import { formatDate } from '@/services/tracker';
-import { spacing, radius, type, leading, density } from '@/constants/theme';
+import { radius, type, leading, density } from '@/constants/theme';
 interface Props { model: ReturnType<typeof useWithdrawals> }
 export function WithdrawalForms({ model: m }: Props) {
-  const c = m.colors; const w = m.returningWithdrawal; const receipt = m.receiptWithdrawal;
+  const c = m.colors; const w = m.returningWithdrawal; const receipt = m.receiptWithdrawal; const busy = m.busy || m.working;
   const receiptAsset = receipt ? m.asset(receipt.assetId) : undefined;
-  const title = receipt ? m.receiptKind === 'return' ? 'Return recorded · PDF receipt' : 'Withdrawal recorded · PDF receipt' : w ? 'Return equipment' : 'New equipment withdrawal';
-  // One native modal switches from the confirmed form to its receipt, avoiding
-  // overlapping native modal presentations when an operation completes.
-  return <FormModal visible={m.open || Boolean(w) || Boolean(receipt)} onClose={m.closeDialog} title={title}>
+  const title = receipt ? 'TRANSACTION & RECEIPTS' : w ? m.returnReviewing ? 'CONFIRM EQUIPMENT RETURN' : 'RETURN EQUIPMENT' : m.reviewing ? 'CONFIRM WITHDRAWAL' : 'NEW EQUIPMENT WITHDRAWAL';
+  return <FormModal visible={m.open || Boolean(w) || Boolean(receipt)} onClose={m.closeDialog} title={title} busyOverride={m.working}>
     {receipt ? <>
-      {receipt.returnedAt ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={m.receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => m.setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
-      {receiptAsset ? <ReceiptActions key={`${receipt.id}-${m.receiptKind}`} asset={receiptAsset} withdrawal={receipt} kind={m.receiptKind} /> : <ErrorText message="The equipment record for this receipt could not be found." />}
+      <Text selectable style={[styles.label, { color: c.primary }]}>REFERENCE · {receipt.reference || receipt.id}</Text>
+      <Text style={[styles.helper, { color: c.text }]}>Releaser: {receipt.releaser}{'\n'}Receiver: {receipt.receiver}{'\n'}Withdrawn: {formatDate(receipt.withdrawalAt)}{'\n'}Expected return: {formatDate(receipt.dueAt)}{'\n'}Remarks: {receipt.notes || '—'}</Text>
+      <Text style={[styles.section, { color: c.text }]}>{m.receiptItems.length} EQUIPMENT · {m.receiptItems.reduce((sum, item) => sum + (item.quantity ?? 1), 0)} UNITS WITHDRAWN</Text>
+      <FlatList scrollEnabled={false} data={m.receiptItems} keyExtractor={item => item.id} renderItem={({ item }) => <View style={[styles.row, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+        <Text style={[styles.item, { color: c.text }]}>{item.equipmentSnapshot?.name || m.asset(item.assetId)?.name}</Text>
+        <Text selectable style={[styles.helper, { color: c.subtle }]}>Asset ID: {item.assetId}{'\n'}{item.equipmentSnapshot?.serial || m.asset(item.assetId)?.serial}{'\n'}Individual record: {item.id}</Text>
+        <Text style={[styles.helper, { color: c.text }]}>{item.quantity ?? 1} withdrawn · {m.remainingQuantity(item)} outstanding</Text>
+        <Badge status={item.deletedAt ? 'ARCHIVED' : item.returnedAt ? 'RETURNED' : m.getEquipmentStatus(item.assetId)} />
+        {m.receiptKind === 'return' ? <FlatList scrollEnabled={false} data={m.receiptReturns.filter(r => r.withdrawalId === item.id && r.reference === m.receiptReturnReference)} keyExtractor={r => r.id} renderItem={({ item: r }) => <Text style={[styles.helper, { color: c.success }]}>{r.quantity} returned · {formatDate(r.at)}{'\n'}Returning: {r.returning} · Receiving: {r.receiving}{'\n'}{r.condition} · {r.remarks || 'No remarks'}</Text>} /> : null}
+        {m.canOperate && m.remainingQuantity(item) > 0 ? <Button title="Return this equipment" secondary compact onPress={() => m.beginReturn(item)} disabled={busy} /> : null}
+      </View>} />
+      {receipt.returnedAt || m.receiptReturnOptions.length ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={m.receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => { m.setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal'); if (value === 'RETURN RECEIPT' && !m.receiptReturnReference) m.setReceiptReturnReference(m.receiptReturnOptions[0]?.reference || ''); }} /> : null}
+      {m.receiptKind === 'return' && m.receiptReturnOptions.length ? <>
+        <Text style={[styles.section, { color: c.text }]}>SELECT RETURN EVENT</Text>
+        <FlatList scrollEnabled={false} data={m.receiptReturnOptions} keyExtractor={r => r.reference} renderItem={({ item: r }) => <Button title={`${m.receiptReturnReference === r.reference ? 'Selected · ' : ''}${r.reference} · ${formatDate(r.at)}`} secondary compact onPress={() => m.setReceiptReturnReference(r.reference)} disabled={busy} />} />
+      </> : null}
+      {receiptAsset ? <ReceiptActions key={`${receipt.id}-${m.receiptKind}-${m.receiptReturnReference}`} asset={receiptAsset} withdrawal={receipt} kind={m.receiptKind} returnReference={m.receiptReturnReference || undefined} /> : <ErrorText message="The equipment record for this receipt could not be found." />}
+      <Text style={[styles.helper, { color: c.subtle }]}>The complete receipt includes every item under this reference. Each return event records only its returned quantities; other items remain unchanged.</Text>
     </> : w ? <>
-      <View style={[styles.returnSummary, { borderColor: c.border }]}>
-        <Text style={[styles.item, { color: c.text }]}>{m.asset(w.assetId)?.name}</Text>
-        <Text style={[styles.helper, { color: c.subtle }]}>{m.asset(w.assetId)?.serial}</Text>
-        <Text style={[styles.helper, { color: c.subtle }]}>Original receiver: {w.receiver}</Text>
-        <Text style={[styles.helper, { color: c.subtle }]}>Withdrawn: {formatDate(w.withdrawalAt)}</Text>
-        <Text style={[styles.helper, { color: c.subtle }]}>Due: {formatDate(w.dueAt)}</Text>
-        <Badge status={m.status(w.assetId)} />
-      </View>
-      <NameField label="Returning personnel *" role="releasers" value={m.returning} onChangeText={m.setReturning} />
-      <NameField label="Receiving personnel *" role="receivers" value={m.receiving} onChangeText={m.setReceiving} />
-      <Field label="Equipment condition *" value={m.condition} onChangeText={m.setCondition} placeholder="e.g. Good, complete, operational" />
-      <Field label="Remarks" value={m.remarks} onChangeText={m.setRemarks} multiline placeholder="Additional observations" />
-      <ErrorText message={m.returnError} />
-      <Button title="Confirm return" icon="return-down-back-outline" loading={m.busy} onPress={() => void m.confirmReturn()} />
+      <Text selectable style={[styles.label, { color: c.primary }]}>{w.reference || w.id}{'\n'}RETURN · {m.returnRequestId}</Text>
+      <Text style={[styles.helper, { color: c.subtle }]}>Original receiver: {w.receiver} · Due: {formatDate(w.dueAt)}. Enter a whole quantity to return; 0 or blank skips an item.</Text>
+      {!m.returnReviewing ? <Button title="Return all outstanding quantities" secondary onPress={m.selectAllReturns} disabled={busy} /> : null}
+      <FlatList scrollEnabled={false} data={m.returnItems} keyExtractor={item => item.id} ListEmptyComponent={<Empty title="No outstanding equipment" message="" />} renderItem={({ item }) => <View style={[styles.row, { borderColor: c.border }]}>
+        <Text style={[styles.item, { color: c.text }]}>{item.equipmentSnapshot?.name || m.asset(item.assetId)?.name}</Text>
+        <Text selectable style={[styles.helper, { color: c.subtle }]}>{item.assetId} · {item.equipmentSnapshot?.serial || m.asset(item.assetId)?.serial}{'\n'}{m.remainingQuantity(item)} unit(s) outstanding</Text>
+        {!m.returnReviewing ? <Field label="Quantity to return (0 = skip)" value={m.returnQuantities[item.id] || ''} onChangeText={value => m.changeReturnQuantity(item.id, value)} keyboardType="numeric" editable={!busy} /> : <Text style={[styles.helper, { color: c.text }]}>Return now: {m.returnQuantities[item.id] || '0'}</Text>}
+      </View>} />
+      {m.returnReviewing ? <>
+        <Text style={[styles.helper, { color: c.text }]}>Returning: {m.returning}{'\n'}Receiving: {m.receiving}{'\n'}Condition: {m.condition}{'\n'}Remarks: {m.remarks || '—'}</Text>
+        <ErrorText message={m.returnError} />
+        <Button title="Confirm return" icon="return-down-back-outline" loading={busy} onPress={() => void m.confirmReturn()} />
+        <Button title="Back to edit return" secondary disabled={busy} onPress={() => m.setReturnReviewing(false)} />
+      </> : <>
+        <NameField label="Returning personnel *" role="releasers" value={m.returning} onChangeText={m.setReturning} />
+        <NameField label="Receiving personnel *" role="receivers" value={m.receiving} onChangeText={m.setReceiving} />
+        <Field label="Equipment condition *" value={m.condition} onChangeText={m.setCondition} placeholder="e.g. Good, complete, operational" editable={!busy} />
+        <Field label="Remarks" value={m.remarks} onChangeText={m.setRemarks} multiline placeholder="Additional observations" editable={!busy} />
+        <ErrorText message={m.returnError} />
+        <Button title="Review return" disabled={busy || !m.returnItems.length} onPress={m.reviewReturn} />
+      </>}
+    </> : m.reviewing ? <>
+      <Text selectable style={[styles.label, { color: c.primary }]}>REFERENCE · {m.requestId}</Text>
+      <Text style={[styles.helper, { color: c.text }]}>Releaser: {m.releaser}{'\n'}Receiver: {m.receiver}{'\n'}Withdrawn: {formatDate(m.withdrawalAt)}{'\n'}Expected return: {formatDate(m.dueAt)}{'\n'}Remarks: {m.notes || '—'}</Text>
+      <Text style={[styles.section, { color: c.text }]}>SELECTED EQUIPMENT · {m.items.length} ITEMS · {m.totalUnits} UNITS</Text>
+      <FlatList scrollEnabled={false} data={m.items} keyExtractor={item => item.assetId} renderItem={({ item }) => <View style={[styles.row, { borderColor: c.border }]}>
+        <Text style={[styles.item, { color: c.text }]}>{item.name || m.asset(item.assetId)?.name} · QTY {item.quantity}</Text>
+        <Text selectable style={[styles.helper, { color: c.subtle }]}>Asset ID: {item.manual ? 'Assigned on save (new manual equipment)' : item.assetId}{'\n'}{item.serial || m.asset(item.assetId)?.serial}{'\n'}{item.description || m.asset(item.assetId)?.notes}</Text>
+      </View>} />
+      <SignaturePad receiver={m.receiver} value={m.signature} onChange={() => {}} onSave={() => {}} saved readOnly />
+      <Text style={[styles.helper, { color: c.warning }]}>Confirming saves all items under one reference and marks them OUT. Quantities and availability are checked again before saving.</Text>
+      <ErrorText message={m.error} />
+      <Button title="Confirm & save withdrawal" icon="save-outline" loading={busy} onPress={() => void m.submit()} />
+      <Button title="Back to edit withdrawal" secondary disabled={busy} onPress={() => m.setReviewing(false)} />
     </> : <>
-      <Text style={[styles.label, { color: c.text }]}>Equipment source</Text>
+      <Text selectable style={[styles.label, { color: c.primary }]}>REFERENCE · {m.requestId}</Text>
+      <Text style={[styles.helper, { color: c.subtle }]}>Select one or more inventory items. Each item keeps its own withdrawal and return history.</Text>
+      <Text style={[styles.section, { color: c.text }]}>EQUIPMENT SOURCE</Text>
       <Chips options={['INVENTORY', 'MANUAL ENTRY']} selected={m.source} onSelect={m.setSource} />
       {m.source === 'INVENTORY' ? <>
-        <Field label="Search equipment" value={m.assetQuery} onChangeText={m.setAssetQuery} placeholder="Equipment name or serial number" />
-        <View style={[styles.equipmentList, { borderColor: c.border }]}><FlatList style={styles.list} nestedScrollEnabled data={m.available} keyExtractor={a => a.id} ListEmptyComponent={<Empty title="No equipment found" message="Register equipment in Inventory, or choose Manual Entry." />} renderItem={({ item: a }) => <Pressable accessibilityLabel={`Select ${a.name}, ${a.serial}`} disabled={m.status(a.id) !== 'IN'} onPress={() => m.setAssetId(a.id)} style={({ pressed }) => [styles.equipment, { borderBottomColor: c.border, backgroundColor: m.assetId === a.id ? c.blueBg : c.surface, opacity: m.status(a.id) !== 'IN' ? 0.5 : pressed ? 0.7 : 1 }]}><Ionicons name={m.assetId === a.id ? 'radio-button-on-outline' : 'radio-button-off-outline'} size={20} color={c.primary} /><View style={styles.equipmentName}><Text style={[styles.item, { color: c.text }]}>{a.name}</Text><Text style={[styles.serial, { color: c.subtle }]}>{a.serial}</Text></View><Badge status={m.status(a.id)} /></Pressable>} /></View>
-        {m.assetId ? <Text style={[styles.selected, { color: c.primary }]}>Selected: {m.asset(m.assetId)?.name} · {m.asset(m.assetId)?.serial}</Text> : null}
+        <Pressable accessibilityRole="button" accessibilityLabel="Open searchable equipment multi-select" accessibilityState={{ expanded: m.equipmentDropdownOpen, disabled: busy }} disabled={busy} onPress={() => m.setEquipmentDropdownOpen(!m.equipmentDropdownOpen)} style={({ pressed }) => [styles.dropdown, { backgroundColor: c.surfaceAlt, borderColor: c.borderBright, opacity: pressed ? 0.65 : 1 }]}>
+          <Ionicons name="cube-outline" size={22} color={c.primary} /><Text style={[styles.dropdownText, { color: c.text }]}>{m.items.length} equipment selected · Add / remove equipment</Text><Ionicons name={m.equipmentDropdownOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={20} color={c.primary} />
+        </Pressable>
+        {m.equipmentDropdownOpen ? <>
+          <Field label="Search equipment" value={m.assetQuery} onChangeText={m.setAssetQuery} placeholder="Asset ID, name, serial or description" editable={!busy} />
+          <View style={[styles.equipmentList, { borderColor: c.border }]}><FlatList style={styles.list} nestedScrollEnabled keyboardShouldPersistTaps="handled" data={m.available} keyExtractor={a => a.id} extraData={m.items} ListEmptyComponent={<Empty title="No matching inventory" message="" />} renderItem={({ item: a }) => {
+            const selected = m.items.some(item => item.assetId === a.id); const status = m.getEquipmentStatus(a.id); const unavailable = status !== 'IN' || m.assetCapacity(a) < 1;
+            return <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled: busy || unavailable }} accessibilityLabel={`Select ${a.name}, ${a.serial}`} disabled={busy || unavailable} onPress={() => m.toggleEquipment(a.id)} style={({ pressed }) => [styles.equipment, { borderBottomColor: c.border, backgroundColor: selected ? c.blueBg : c.surfaceAlt, opacity: unavailable ? 0.5 : pressed ? 0.65 : 1 }]}>
+              <Ionicons name={selected ? 'checkbox-outline' : 'square-outline'} size={24} color={c.primary} /><View style={styles.equipmentName}><Text style={[styles.item, { color: c.text }]}>{a.name}</Text><Text selectable style={[styles.helper, { color: c.subtle }]}>{a.id}{'\n'}{a.serial} · {m.assetCapacity(a)} unit(s)</Text></View><Badge status={status} />
+            </Pressable>;
+          }} /></View>
+        </> : null}
       </> : <>
-        <Field label="Equipment name *" value={m.name} onChangeText={m.setName} placeholder="e.g. Harris Handheld Radio" />
-        <Field label="Serial / Product ID *" value={m.serial} onChangeText={m.setSerial} placeholder="Unique serialized asset ID" />
-        <Field label="Equipment notes / purpose *" value={m.manualNotes} onChangeText={m.setManualNotes} multiline placeholder="Condition, location, or purpose" />
+        <Text style={[styles.helper, { color: c.subtle }]}>Manual equipment is registered only after final confirmation. Add it to the same selected list below.</Text>
+        <Field label="Equipment name *" value={m.name} onChangeText={m.setName} placeholder="e.g. Harris Handheld Radio" editable={!busy} />
+        <Field label="Serial / Product ID *" value={m.serial} onChangeText={m.setSerial} placeholder="Unique serialized asset ID" editable={!busy} />
+        <Field label="Equipment notes / purpose *" value={m.manualNotes} onChangeText={m.setManualNotes} multiline placeholder="Condition, location, or purpose" editable={!busy} />
+        <Field label="Manual equipment quantity *" value={m.manualQuantity} onChangeText={m.setManualQuantity} keyboardType="numeric" editable={!busy} />
+        <Button title="Add manual equipment" secondary icon="add-outline" onPress={m.addManual} disabled={busy} />
       </>}
+      <Text style={[styles.section, { color: c.text }]}>SELECTED EQUIPMENT · {m.items.length} ITEMS · {m.totalUnits} UNITS</Text>
+      <FlatList scrollEnabled={false} data={m.items} keyExtractor={item => item.assetId} ListEmptyComponent={<Text style={[styles.helper, { color: c.subtle }]}>No equipment selected. Choose inventory items or add manual equipment.</Text>} renderItem={({ item }) => {
+        const a = m.asset(item.assetId); const capacity = item.manual ? null : a ? m.assetCapacity(a) : 0;
+        return <View style={[styles.row, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
+          <Text style={[styles.item, { color: c.text }]}>{item.name || a?.name}</Text>
+          <Text selectable style={[styles.helper, { color: c.subtle }]}>Asset ID: {item.manual ? 'Assigned on save' : item.assetId}{'\n'}{item.serial || a?.serial}{'\n'}{item.description || a?.notes}</Text>
+          <Text style={[styles.helper, { color: c.primary }]}>{capacity === null ? 'New manual inventory lot' : `${capacity} unit(s) available; serialized equipment has quantity 1`}</Text>
+          {!item.manual && m.getEquipmentStatus(item.assetId) !== 'IN' ? <ErrorText message="This item has become unavailable. Remove it before submitting." /> : null}
+          <Field label="Quantity to withdraw *" keyboardType="numeric" value={m.quantityDrafts[item.assetId] ?? '1'} onChangeText={value => m.changeQuantity(item.assetId, value)} editable={!busy} />
+          <Button title="Remove equipment" secondary compact icon="close-outline" onPress={() => m.removeItem(item.assetId)} disabled={busy} />
+        </View>;
+      }} />
       <View style={[styles.divider, { backgroundColor: c.border }]} />
       <NameField label="Releaser *" role="releasers" value={m.releaser} onChangeText={m.setReleaser} />
       <NameField label="Receiver *" role="receivers" value={m.receiver} onChangeText={m.setReceiver} />
       <SignaturePad receiver={m.receiver} value={m.signature} onChange={m.setSignature} saved={m.saved} onSave={() => m.setSaved(true)} />
-      <DateField label="Date of withdrawal *" value={m.withdrawalAt} onChange={m.setWithdrawalAt} />
-      <DateField label="Due date for return *" value={m.dueAt} onChange={m.setDueAt} />
-      <Field label="Additional notes" value={m.notes} onChangeText={m.setNotes} multiline placeholder="Condition, intended location, or special instructions" />
+      <DateField label="Withdrawal date & time *" value={m.withdrawalAt} onChange={m.setWithdrawalAt} />
+      <DateField label="Expected return date *" value={m.dueAt} onChange={m.setDueAt} />
+      <Field label="Remarks / additional notes" value={m.notes} onChangeText={m.setNotes} multiline placeholder="Condition, intended location, or special instructions" editable={!busy} />
       <ErrorText message={m.error} />
-      <Button title="Confirm withdrawal" icon="swap-horizontal-outline" loading={m.busy} onPress={() => void m.submit()} />
+      <Button title="Review withdrawal" icon="checkmark-circle-outline" disabled={busy || !m.items.length || !m.loaded} onPress={m.reviewWithdrawal} />
     </>}
   </FormModal>;
 }
-const styles = StyleSheet.create({ label: { fontSize: type.meta, fontWeight: '700', textTransform: 'uppercase' }, helper: { fontSize: type.caption, lineHeight: leading.caption }, equipmentList: { height: 192, borderWidth: 1, borderRadius: radius.md, overflow: 'hidden', marginBottom: density.sectionGap }, list: { flex: 1 }, equipment: { flexDirection: 'row', padding: density.cardPadding, borderBottomWidth: 1, alignItems: 'center', gap: density.iconGap }, equipmentName: { flex: 1, minWidth: 1 }, item: { fontSize: type.small, lineHeight: leading.small, includeFontPadding: false, fontWeight: '700', textTransform: 'uppercase' }, serial: { fontSize: type.caption, lineHeight: leading.caption }, selected: { fontSize: type.caption, lineHeight: leading.caption, marginBottom: density.headerGap }, divider: { height: 1, marginTop: density.headerGap, marginBottom: density.sectionGap }, returnSummary: { paddingBottom: density.sectionGap, borderBottomWidth: 1, marginBottom: density.sectionGap, gap: density.valueGap } });
+const styles = StyleSheet.create({ label: { fontSize: type.meta, fontWeight: '700', lineHeight: leading.small, includeFontPadding: false }, section: { fontSize: type.meta, fontWeight: '700', lineHeight: leading.small, marginTop: density.sectionGap, marginBottom: density.headerGap, includeFontPadding: false }, helper: { fontSize: type.caption, lineHeight: leading.body, marginBottom: density.headerGap, includeFontPadding: false }, equipmentList: { height: 240, borderWidth: 1, borderRadius: radius.md, overflow: 'hidden', marginBottom: density.sectionGap }, list: { flex: 1 }, equipment: { minHeight: 64, flexDirection: 'row', padding: density.cardPadding, borderBottomWidth: 1, alignItems: 'center', gap: density.iconGap }, equipmentName: { flex: 1, minWidth: 1 }, item: { fontSize: type.small, lineHeight: leading.small, includeFontPadding: false, fontWeight: '700', textTransform: 'uppercase' }, row: { borderWidth: 1, borderRadius: radius.md, padding: density.cardPadding, gap: density.headerGap, marginBottom: density.cardGap }, divider: { height: 1, marginVertical: density.sectionGap }, dropdown: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: density.iconGap, borderWidth: 1, borderRadius: radius.sm + 4, padding: density.cardPadding, marginBottom: density.sectionGap }, dropdownText: { flex: 1, minWidth: 1, fontSize: type.body, lineHeight: leading.body, includeFontPadding: false } });

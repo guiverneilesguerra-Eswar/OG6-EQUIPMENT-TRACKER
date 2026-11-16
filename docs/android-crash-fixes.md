@@ -1,4 +1,6 @@
-# Android batch and audio crash fixes
+# Android withdrawal-list and audio crash fixes
+
+The separate batch UI was subsequently removed. Its multi-selection/partial-return behavior now lives in the existing standard New equipment withdrawal form (`docs/unified-withdrawals.md`). R2 audio verification remains unchanged. The structural callback regression now checks `useWithdrawals.ts` and `WithdrawalForms.tsx`.
 
 ## 1. Batch inventory `TypeError: '' is not a function`
 
@@ -18,7 +20,7 @@ This covers upload/restore probes and both saved playback channels, including la
 
 The second report contains the same `renderItem@250942:42` and component bundle positions as the first, although its cache directory differs. The source inspected here already had the first callback/MediaPlayer fix. This is consistent with an older bundle or retained player being used, but bundle positions alone do not prove that. A complete native Java stack is still needed to identify a persistent native error.
 
-R2 adds **ANDROID FIX R2** in Settings → Access & Data Protection and the batch modal. This is a code revision indicator, not a database migration or a change to package identity. If that text is absent, the device has not received this code; additional source edits cannot repair the bundle it is running.
+R2 adds **ANDROID FIX R2** in Settings → Access & Data Protection. This is a code revision indicator, not a database migration or a change to package identity. If that text is absent, the device has not received this code; additional source edits cannot repair the bundle it is running.
 
 The shared decoder now verifies `androidImplementation` returned by native code, not just the creation options. Only a loaded **MediaPlayer** decoder may be accepted on Android. Upload/restore validation and both playback slots share this check; unverified/unloaded decoders are rejected and unloaded with visible guidance, not silently played as ExoPlayer. The Settings sound panel shows **VERIFIED ANDROID ENGINE · MediaPlayer** only after a selected clip has loaded and the native response has passed verification. No sound selected means no engine indicator is expected. Readiness resets clear this indicator. iOS/web keep their existing backend.
 
@@ -28,9 +30,9 @@ JavaScript guards cannot catch every native fatal exception or move native relea
 
 1. Export a complete backup before any installation change if possible. Do not clear storage or uninstall.
 2. Fully close the app process, then reopen it with the latest OnSpace preview/code. For an installed APK, generate the updated APK and install over the existing app using the same application identity/signing key.
-3. Check **ANDROID FIX R2** in Settings and the batch dialog before testing. Missing revision means the new code is not running.
+3. Check **ANDROID FIX R2** in Settings before testing the standard withdrawal dialog. Missing revision means the new code is not running.
 4. With an existing selected MP3/WAV, confirm the verified MediaPlayer engine appears in its sound panel. Preview/test each channel, then stop, background/foreground and repeat.
-5. Open the batch inventory list, search and select items; unavailable items must remain disabled. Save/reopen a test batch and perform partial/full returns; feedback must not change the equipment status callback.
+5. Open the standard equipment multi-select, search and select items; unavailable items must remain disabled. Save/reopen a test transaction and perform partial/full returns; feedback must not change the equipment status callback.
 6. If either crash remains with R2 visible, provide fresh logs including all Java `at ...` frames, especially `expo.modules.*`, the revision/engine indicators, and whether this is OnSpace phone preview or an installed APK. Live Preview network logs cannot verify the Android native runtime.
 
 ## Verification status
@@ -42,7 +44,7 @@ From an exported development environment:
 ```sh
 npx tsc --noEmit
 deno test --no-check tests/audioLoadOptions.test.ts
-deno test --allow-read=hooks,components,services tests/androidCrashRegression.test.ts
+deno test --allow-read=hooks,components,services,app tests/androidCrashRegression.test.ts
 deno test --no-check --import-map=tests/audio-player-import-map.json tests/audioLoadOptions.test.ts tests/audioPlayback.test.ts
 deno test --no-check --import-map=tests/upgrade-import-map.json tests/movements.test.ts
 ```
@@ -51,7 +53,7 @@ Fully close/relaunch the app after applying the code. An installed release APK n
 
 Use test records and verify on Android:
 
-1. Open New Batch Withdrawal with real inventory; scroll/search, check IN/OUT/overdue badges and confirm unavailable items stay disabled.
+1. Open New equipment withdrawal with real inventory; scroll/search, check IN/OUT/overdue badges and confirm unavailable items stay disabled.
 2. Select inventory/manual items, save signature, review/save, and open the receipt. Verify a message is shown without replacing the status callback.
 3. Perform partial and full batch returns and reopen receipts. Confirm IDs, balances and history remain intact.
 4. Preview/test existing notification and alarm MP3/WAV clips; stop, repeat, change volume and replace either channel independently.

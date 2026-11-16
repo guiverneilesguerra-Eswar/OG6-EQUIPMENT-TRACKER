@@ -26,14 +26,14 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
       {a.archivedAt ? line('Equipment archived', formatDate(a.archivedAt)) : null}
       {canOperate && (a.archivedAt || w?.deletedAt) ? line('Administrator authorization reference', archiveEvent?.authorizationId) : null}
       {w && canOperate ? <>
-        {line('Batch / transaction reference', w.reference || w.id)}{line('Individual withdrawal ID', w.id)}{line('Quantity withdrawn', String(w.quantity ?? 1))}{line('Quantity outstanding', String(remainingQuantity(w)))}{line('Releaser', w.releaser)}{line('Receiver', w.receiver)}
+        {line('Transaction reference', w.reference || w.id)}{line('Individual withdrawal ID', w.id)}{line('Quantity withdrawn', String(w.quantity ?? 1))}{line('Quantity outstanding', String(remainingQuantity(w)))}{line('Releaser', w.releaser)}{line('Receiver', w.receiver)}
         {line('Withdrawal date', formatDate(w.withdrawalAt))}{line('Due date', formatDate(w.dueAt))}
         {line('Recorded at', formatDate(w.createdAt))}{line('Purpose / notes', w.notes)}
         {w.deletedAt ? line('Withdrawal archived', formatDate(w.deletedAt)) : null}
         <SignaturePad receiver={w.receiver} value={w.signature} onChange={() => {}} onSave={() => {}} saved readOnly />
         <Text style={[styles.section, { color: c.text }]}>PDF RECEIPT</Text>
-        {w.returnedAt ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
-        <ReceiptActions key={`${w.id}-${w.returnedAt ? receiptKind : 'withdrawal'}`} asset={a} withdrawal={w} kind={w.returnedAt ? receiptKind : 'withdrawal'} />
+        {w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
+        <ReceiptActions key={`${w.id}-${w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'}`} asset={a} withdrawal={w} kind={w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'} />
         {w.returnedAt ? <>{line('Returned at', formatDate(w.returnedAt))}{line('Returning personnel', w.returning)}{line('Receiving personnel', w.receiving)}{line('Return condition', w.condition)}{line('Return remarks', w.remarks)}</> : null}
       </> : null}
       {canOperate && data.returnRecords?.some(r => w ? r.withdrawalId === w.id : r.assetId === a?.id) ? <>

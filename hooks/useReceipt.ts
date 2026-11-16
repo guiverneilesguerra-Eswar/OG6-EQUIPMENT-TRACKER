@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Asset, Withdrawal } from '@/services/tracker';
 import { createReceipt, downloadReceipt, ReceiptFile, ReceiptKind, shareReceipt } from '@/services/receipts';
+import { printTransactionReceipt } from '@/services/transactionReceipts';
+import { useTracker } from './useTracker';
 
-export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKind) {
+export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKind, returnReference?: string) {
+  const { data } = useTracker();
+  // Notice polling does not repeatedly rebuild a PDF; only receipt records do.
+  const receiptData = useMemo(() => ({ ...data }), [data.assets, data.withdrawals, data.batches, data.returnRecords]);
+  const [printing, setPrinting] = useState(false);
   const [file, setFile] = useState<ReceiptFile | null>(null);
   const [preparing, setPreparing] = useState(true);
   const [delivering, setDelivering] = useState(false);
@@ -15,11 +21,11 @@ export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKi
   useEffect(() => {
     let cancelled = false;
     setFile(null); setPreparing(true); setError(''); setMessage('');
-    createReceipt(asset, withdrawal, kind).then(result => { if (!cancelled) setFile(result); }).catch(e => {
+    createReceipt(asset, withdrawal, kind, receiptData, returnReference).then(result => { if (!cancelled) setFile(result); }).catch(e => {
       if (!cancelled) setError(e instanceof Error ? e.message : 'Unable to generate the PDF receipt. Please try again.');
     }).finally(() => { if (!cancelled) setPreparing(false); });
     return () => { cancelled = true; };
-  }, [asset, withdrawal, kind, attempt]);
+  }, [asset, withdrawal, kind, attempt, receiptData, returnReference]);
   const deliver = useCallback(async (share: boolean) => {
     if (!file || locked.current) return;
     locked.current = true; setDelivering(true); setError(''); setMessage('');
@@ -34,6 +40,13 @@ export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKi
     } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : 'Unable to export the PDF receipt. Please try again.'); }
     finally { locked.current = false; if (mounted.current) setDelivering(false); }
   }, [file]);
+  const print = useCallback(async () => {
+    if (locked.current) return;
+    locked.current = true; setPrinting(true); setError(''); setMessage('');
+    try { await printTransactionReceipt(receiptData, withdrawal, kind, returnReference); if (mounted.current) setMessage('Print dialog opened. Printing is handled by your device or browser.'); }
+    catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : 'Unable to open printing. Download the PDF and print it from a PDF viewer.'); }
+    finally { locked.current = false; if (mounted.current) setPrinting(false); }
+  }, [receiptData, withdrawal, kind, returnReference]);
   const retry = useCallback(() => setAttempt(value => value + 1), []);
-  return { file, preparing, delivering, error, message, retry, deliver };
+  return { file, preparing, delivering, printing, error, message, retry, deliver, print };
 }

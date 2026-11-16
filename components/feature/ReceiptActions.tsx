@@ -8,16 +8,17 @@ import { useTracker } from '@/hooks/useTracker';
 import { Button, ErrorText } from '@/components/ui/Controls';
 import { leading, spacing, type, density } from '@/constants/theme';
 
-interface ActionsProps { asset: Asset; withdrawal: Withdrawal; kind: ReceiptKind }
-export const ReceiptActions = memo(function ReceiptActions({ asset, withdrawal, kind }: ActionsProps) {
-  const m = useReceipt(asset, withdrawal, kind); const { colors: c } = useTracker();
+interface ActionsProps { asset: Asset; withdrawal: Withdrawal; kind: ReceiptKind; returnReference?: string }
+export const ReceiptActions = memo(function ReceiptActions({ asset, withdrawal, kind, returnReference }: ActionsProps) {
+  const m = useReceipt(asset, withdrawal, kind, returnReference); const { colors: c } = useTracker();
   return <View style={styles.actions}>
     <View style={styles.fileRow}><Ionicons name="document-text-outline" size={24} color={c.primary} /><Text style={[styles.filename, { color: c.text }]} selectable>{m.file?.filename || 'PDF RECEIPT'}</Text></View>
     {m.preparing ? <View style={styles.progress}><ActivityIndicator color={c.primary} /><Text style={[styles.message, { color: c.subtle }]}>Preparing PDF…</Text></View> : null}
     <ErrorText message={m.error} />
     {!m.file && !m.preparing ? <Button title="Retry PDF generation" secondary onPress={m.retry} /> : null}
-    <Button title="Share / send PDF" icon="share-outline" disabled={!m.file} loading={m.delivering} onPress={() => void m.deliver(true)} />
-    <Button title={Platform.OS === 'web' ? 'Download PDF' : 'Save PDF on device'} secondary icon="download-outline" disabled={!m.file || m.delivering} onPress={() => void m.deliver(false)} />
+    <Button title="Share / send PDF" icon="share-outline" disabled={!m.file || m.printing} loading={m.delivering} onPress={() => void m.deliver(true)} />
+    <Button title={Platform.OS === 'web' ? 'Download PDF' : 'Save PDF on device'} secondary icon="download-outline" disabled={!m.file || m.delivering || m.printing} onPress={() => void m.deliver(false)} />
+    <Button title="Print complete receipt" secondary icon="print-outline" disabled={!m.file || m.delivering} loading={m.printing} onPress={() => void m.print()} />
     {m.message ? <Text accessibilityRole="alert" style={[styles.message, { color: c.primary }]}>{m.message}</Text> : null}
     <Text style={[styles.privacy, { color: c.subtle }]}>Contains personnel details and a signature. Share only with authorized recipients.</Text>
   </View>;

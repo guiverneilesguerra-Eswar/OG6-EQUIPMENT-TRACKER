@@ -4,7 +4,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Asset, Withdrawal, formatDate, manilaParts } from './tracker';
 import { palettes } from '@/constants/theme';
-import { deliverFile } from './portableFiles';
+import type { TrackerData } from './tracker';
+import { createTransactionReceipt } from './transactionReceipts';
 
 export type ReceiptKind = 'withdrawal' | 'return';
 export interface ReceiptFile { filename: string; bytes: Uint8Array; base64: string }
@@ -12,8 +13,9 @@ export type ReceiptDelivery = 'downloaded' | 'saved' | 'share-sheet' | 'shared' 
 
 const pdfColor = (hex: string) => rgb(parseInt(hex.slice(1, 3), 16) / 255, parseInt(hex.slice(3, 5), 16) / 255, parseInt(hex.slice(5, 7), 16) / 255);
 
-export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKind): Promise<ReceiptFile> {
+export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKind, data?: TrackerData, returnReference?: string): Promise<ReceiptFile> {
   if (withdrawal.assetId !== asset.id) throw new Error('Receipt equipment does not match this transaction.');
+  if (data) return createTransactionReceipt(data, withdrawal, kind, returnReference);
   if (kind === 'return' && !withdrawal.returnedAt) throw new Error('A return receipt is available only after equipment has been returned.');
   const doc = await PDFDocument.create();
   const normal = await doc.embedFont(StandardFonts.Helvetica);
@@ -69,7 +71,7 @@ export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: 
   };
   addPage();
   field('Transaction status at this event', kind === 'return' ? 'RETURNED / EQUIPMENT IN' : 'WITHDRAWN / EQUIPMENT OUT');
-  field('Batch / transaction reference', withdrawal.reference || withdrawal.id);
+  field('Transaction reference', withdrawal.reference || withdrawal.id);
   field('Equipment name', withdrawal.equipmentSnapshot?.name || asset.name); field('Serial / Product ID', withdrawal.equipmentSnapshot?.serial || asset.serial); field('Asset ID', asset.id);
   field('Quantity withdrawn', String(withdrawal.quantity ?? 1));
   if (kind === 'return') field('Total quantity returned', String(withdrawal.returnedQuantity ?? withdrawal.quantity ?? 1));
