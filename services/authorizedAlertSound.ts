@@ -2,6 +2,7 @@ import { Platform, Linking } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Audio } from 'expo-av';
+import { getAlertSoundInitialStatus } from './audioLoadOptions';
 import { randomUUID } from 'expo-crypto';
 import { decode, encode } from 'base64-arraybuffer';
 import { AuthorizedAlertSound, alertSoundLimits, alertSoundReference, validateAlertSoundBytes, validateAlertSoundDuration } from './alertSoundValidation';
@@ -66,7 +67,9 @@ export function loadDecodedAlertSound(uri: string, volume = 0): Promise<Awaited<
   return new Promise((resolve, reject) => {
     let settled = false;
     const timer = setTimeout(() => { settled = true; reject(new Error('Audio decoding timed out. Choose a supported MP3 or PCM WAV and retry.')); }, 30000);
-    void Audio.Sound.createAsync({ uri }, { shouldPlay: false, volume, progressUpdateIntervalMillis: 150 }).then(result => {
+    // Apply to upload probes, restored clips and both playback slots. Choosing
+    // MediaPlayer only after load would leave the crashing ExoPlayer in place.
+    void Audio.Sound.createAsync({ uri }, getAlertSoundInitialStatus(Platform.OS, volume)).then(result => {
       if (settled) { void result.sound.unloadAsync().catch(() => {}); return; }
       settled = true; clearTimeout(timer); resolve(result);
     }, () => {

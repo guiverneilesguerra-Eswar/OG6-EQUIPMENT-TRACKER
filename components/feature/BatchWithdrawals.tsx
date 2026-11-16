@@ -1,7 +1,7 @@
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBatchWithdrawals } from '@/hooks/useBatchWithdrawals';
-import { Card, Button, Field, ErrorText, Empty, Badge, Chips } from '@/components/ui/Controls';
+import { Card, Button, Field, ErrorText, Empty, Badge } from '@/components/ui/Controls';
 import { NameField } from '@/components/ui/NameField';
 import { DateField } from '@/components/ui/DateField';
 import { FormModal } from '@/components/ui/FormModal';
@@ -22,7 +22,7 @@ export function BatchWithdrawals(_props: Props) {
       }} />
     </Card>
     <FormModal visible={m.mode !== 'closed'} title={title} onClose={m.close} busyOverride={m.working}>
-      <ErrorText message={m.error} />{m.status ? <Text accessibilityRole="alert" style={[styles.copy, { color: c.success }]}>{m.status}</Text> : null}
+      <ErrorText message={m.error} />{m.statusMessage ? <Text accessibilityRole="alert" style={[styles.copy, { color: c.success }]}>{m.statusMessage}</Text> : null}
       {m.mode === 'create' ? <>
         <Text selectable style={[styles.item, { color: c.primary }]}>REFERENCE · {m.requestId}</Text>
         <Field label="Search inventory" value={m.query} onChangeText={m.setQuery} placeholder="Name, serial or description" />
