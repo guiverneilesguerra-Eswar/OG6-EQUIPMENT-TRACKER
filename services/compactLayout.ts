@@ -6,16 +6,16 @@ export function getCompactLayout(width: number, height: number) {
   const safeHeight = Number.isFinite(height) && height > 0 ? height : 667;
   const landscape = safeWidth > safeHeight;
   const commandLayout = landscape && safeWidth >= 600;
-  const consoleScale = commandLayout ? Math.max(0.9, Math.min(1.15, safeWidth / layout.referenceWidth)) : 1;
-  const compactLandscape = commandLayout && safeWidth < 900;
-  const sidebarWidth = !commandLayout ? 0 : compactLandscape ? layout.compactSidebarWidth : Math.round(layout.sidebarWidth * consoleScale);
+  const consoleScale = commandLayout ? Math.max(0.75, Math.min(1, safeWidth / layout.referenceWidth)) : 1;
+  const compactLandscape = commandLayout && (safeWidth < 1100 || safeHeight < 540);
+  const sidebarWidth = !commandLayout ? 0 : safeWidth >= 1100 ? Math.round(layout.sidebarWidth * consoleScale) : safeWidth >= 900 ? layout.mediumSidebarWidth : layout.compactSidebarWidth;
   const pagePadding = commandLayout ? Math.max(density.cardPadding, Math.round(layout.pageInset * consoleScale)) : spacing.md;
   const contentWidth = Math.max(1, Math.min(layout.contentWidth, safeWidth - sidebarWidth) - pagePadding * 2);
-  const dashboardRail = commandLayout && contentWidth >= 820;
+  const dashboardRail = commandLayout && contentWidth >= 780;
   const fourMetrics = commandLayout && contentWidth >= 760;
-  // At 1024px the reference table fits a 539px panel, not an 800px panel.
-  const activityPanelWidth = dashboardRail ? (contentWidth - layout.panelGap) * (1 - layout.railFraction) - density.cardPadding * 2 : contentWidth - density.cardPadding * 2;
-  const tableActivities = dashboardRail && activityPanelWidth >= layout.activityTableMinWidth;
+  // The activity table must fit its own panel, not merely the full viewport.
+  const activityPanelWidth = dashboardRail ? contentWidth * (1 - layout.railFraction) - density.cardGap - density.cardPadding * 2 : contentWidth - density.cardPadding * 2;
+  const tableActivities = dashboardRail && activityPanelWidth >= 800;
   return { width: safeWidth, height: safeHeight, landscape, portrait: !landscape, commandLayout, compactLandscape, consoleScale, sidebarWidth, pagePadding, contentWidth, dashboardRail, fourMetrics, tableActivities, desktop: safeWidth >= 1024, tablet: safeWidth >= 600, columns: fourMetrics ? 4 : 2 };
 }
 

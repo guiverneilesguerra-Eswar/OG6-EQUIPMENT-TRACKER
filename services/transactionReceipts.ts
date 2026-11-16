@@ -5,7 +5,7 @@ import { formatDate } from './tracker';
 import type { ReceiptFile, ReceiptKind } from './receipts';
 import { getTransactionReceiptModel } from './withdrawalTransactions';
 import { remainingQuantity } from './movements';
-import { documentPalette } from '@/constants/theme';
+import { palettes } from '@/constants/theme';
 
 export async function createTransactionReceipt(data: TrackerData, withdrawal: Withdrawal, kind: ReceiptKind, returnReference?: string): Promise<ReceiptFile> {
   const model = getTransactionReceiptModel(data, withdrawal, kind, returnReference);
@@ -13,7 +13,7 @@ export async function createTransactionReceipt(data: TrackerData, withdrawal: Wi
   const title = kind === 'return' ? 'EQUIPMENT RETURN RECEIPT' : 'EQUIPMENT WITHDRAWAL RECEIPT';
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica); const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const color = documentPalette.text;
+  const color = palettes.light.text;
   const ink = rgb(parseInt(color.slice(1, 3), 16) / 255, parseInt(color.slice(3, 5), 16) / 255, parseInt(color.slice(5, 7), 16) / 255);
   const safe = (value: string) => Array.from(value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/\r/g, '').replace(/\t/g, ' ')).map(ch => {
     if (ch === '\n') return ch;
@@ -70,7 +70,7 @@ export function transactionPrintHtml(data: TrackerData, withdrawal: Withdrawal, 
   const model = getTransactionReceiptModel(data, withdrawal, kind, returnReference);
   const htmlEntities: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   const escape = (value: string | number) => String(value).replace(/[&<>"']/g, ch => htmlEntities[ch] || ch);
-  const c = documentPalette;
+  const c = palettes.light;
   const rows = model.items.map(w => {
     const a = data.assets.find(a => a.id === w.assetId);
     const events = model.returns.filter(r => r.withdrawalId === w.id);
