@@ -32,6 +32,10 @@ export function WithdrawalForms({ model: m }: Props) {
         <Text style={[styles.section, { color: c.text }]}>SELECT RETURN EVENT</Text>
         <FlatList scrollEnabled={false} data={m.receiptReturnOptions} keyExtractor={r => r.reference} renderItem={({ item: r }) => <Button title={`${m.receiptReturnReference === r.reference ? 'Selected · ' : ''}${r.reference} · ${formatDate(r.at)}`} secondary compact onPress={() => m.setReceiptReturnReference(r.reference)} disabled={busy} />} />
       </> : null}
+      {m.receiptKind === 'return' ? <FlatList scrollEnabled={false} data={m.receiptReturnSigners} keyExtractor={event => event.id} renderItem={({ item: event }) => <View>
+        <Text style={[styles.helper, { color: c.text }]}>Returning personnel: {event.returning} · {formatDate(event.at)}</Text>
+        {event.returnSignature?.some(stroke => stroke.length > 2) ? <SignaturePad receiver={event.returning} label="Returning personnel signature" nameLabel="returning personnel" value={event.returnSignature} onChange={() => {}} onSave={() => {}} saved readOnly /> : <Text style={[styles.helper, { color: c.subtle }]}>No returning personnel signature recorded for this historical event.</Text>}
+      </View>} /> : null}
       {receiptAsset ? <ReceiptActions key={`${receipt.id}-${m.receiptKind}-${m.receiptReturnReference}`} asset={receiptAsset} withdrawal={receipt} kind={m.receiptKind} returnReference={m.receiptReturnReference || undefined} /> : <ErrorText message="The equipment record for this receipt could not be found." />}
       <Text style={[styles.helper, { color: c.subtle }]}>The complete receipt includes every item under this reference. Each return event records only its returned quantities; other items remain unchanged.</Text>
     </> : w ? <>
@@ -45,11 +49,14 @@ export function WithdrawalForms({ model: m }: Props) {
       </View>} />
       {m.returnReviewing ? <>
         <Text style={[styles.helper, { color: c.text }]}>Returning: {m.returning}{'\n'}Receiving: {m.receiving}{'\n'}Condition: {m.condition}{'\n'}Remarks: {m.remarks || '—'}</Text>
+        <SignaturePad receiver={m.returning} label="Returning personnel signature" nameLabel="returning personnel" value={m.returnSignature} onChange={() => {}} onSave={() => {}} saved readOnly />
+        <Text style={[styles.helper, { color: c.subtle }]}>This signature will be saved with this return event and its selected quantities only.</Text>
         <ErrorText message={m.returnError} />
         <Button title="Confirm return" icon="return-down-back-outline" loading={busy} onPress={() => void m.confirmReturn()} />
         <Button title="Back to edit return" secondary disabled={busy} onPress={() => m.setReturnReviewing(false)} />
       </> : <>
         <NameField label="Returning personnel *" role="releasers" value={m.returning} onChangeText={m.setReturning} />
+        <SignaturePad receiver={m.returning} label="Returning personnel signature *" nameLabel="returning personnel" value={m.returnSignature} onChange={m.setReturnSignature} saved={m.returnSignatureSaved} onSave={() => m.setReturnSignatureSaved(true)} disabled={busy} />
         <NameField label="Receiving personnel *" role="receivers" value={m.receiving} onChangeText={m.setReceiving} />
         <Field label="Equipment condition *" value={m.condition} onChangeText={m.setCondition} placeholder="e.g. Good, complete, operational" editable={!busy} />
         <Field label="Remarks" value={m.remarks} onChangeText={m.setRemarks} multiline placeholder="Additional observations" editable={!busy} />
