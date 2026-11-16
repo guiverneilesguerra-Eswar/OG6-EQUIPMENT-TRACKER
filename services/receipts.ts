@@ -4,7 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Asset, Withdrawal, formatDate, manilaParts } from './tracker';
 import { palettes } from '@/constants/theme';
-import type { TrackerData } from './tracker';
+import type { Signature, TrackerData } from './tracker';
 import { createTransactionReceipt } from './transactionReceipts';
 
 export type ReceiptKind = 'withdrawal' | 'return';
@@ -86,21 +86,27 @@ export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: 
     if (withdrawal.remarks) field('Return remarks', withdrawal.remarks);
   }
   if (withdrawal.notes) field('Withdrawal notes / purpose', withdrawal.notes);
-  ensureSpace(155);
-  page.drawText(kind === 'return' ? 'ORIGINAL WITHDRAWAL SIGNATURE' : 'RECEIVER SIGNATURE', { x: 44, y, size: 9, font: bold, color: subtle }); y -= 15;
-  const boxY = y - 106;
-  page.drawRectangle({ x: 44, y: boxY, width: 300, height: 106, borderWidth: 0.7, borderColor: lineColor });
-  for (const stroke of withdrawal.signature || []) {
-    for (let i = 1; i < stroke.length; i++) {
+  const drawSignature = (label: string, person: string, signature: Signature) => {
+    ensureSpace(170);
+    page.drawText(label, { x: 44, y, size: 9, font: bold, color: subtle }); y -= 15;
+    const boxY = y - 106;
+    page.drawRectangle({ x: 44, y: boxY, width: 300, height: 106, borderWidth: 0.7, borderColor: lineColor });
+    for (const stroke of signature) for (let i = 1; i < stroke.length; i++) {
       const a = stroke[i - 1], b = stroke[i];
       if (![a.x, a.y, b.x, b.y].every(Number.isFinite)) continue;
       const point = (p: { x: number; y: number }) => ({ x: 50 + Math.max(0, Math.min(500, p.x)) * 288 / 500, y: boxY + 6 + (180 - Math.max(0, Math.min(180, p.y))) * 94 / 180 });
       page.drawLine({ start: point(a), end: point(b), thickness: 1.3, color: ink });
     }
+    y = boxY - 15;
+    for (const row of wrap(person || '-', normal, 10, 507)) { ensureSpace(18); page.drawText(row, { x: 44, y, size: 10, font: normal, color: ink }); y -= 15; }
+    y -= 10;
+  };
+  drawSignature(kind === 'return' ? 'ORIGINAL WITHDRAWAL SIGNATURE' : 'RECEIVER SIGNATURE', withdrawal.receiver, withdrawal.signature || []);
+  if (kind === 'return') {
+    field('Original signature', 'Captured at withdrawal; separate from the return signature.');
+    if (withdrawal.returnSignature?.some(stroke => stroke.length > 2)) drawSignature('RETURNING PERSONNEL SIGNATURE', withdrawal.returning || '', withdrawal.returnSignature);
+    else field('Returning personnel signature', 'No returning personnel signature recorded for this historical return.');
   }
-  y = boxY - 15;
-  page.drawText(textSafe(withdrawal.receiver), { x: 44, y, size: 10, font: normal, color: ink }); y -= 15;
-  if (kind === 'return') { page.drawText('Signature captured at withdrawal; not a new return signature.', { x: 44, y, size: 9, font: normal, color: subtle }); }
   const pages = doc.getPages();
   pages.forEach((p, index) => {
     p.drawLine({ start: { x: 44, y: 48 }, end: { x: 551, y: 48 }, thickness: 0.5, color: lineColor });

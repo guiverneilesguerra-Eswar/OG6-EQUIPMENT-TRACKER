@@ -8,6 +8,7 @@ import type { BatchInput, BatchLine, ReturnMovementInput } from '@/services/move
 import { assetCapacity, remainingQuantity } from '@/services/movements';
 import { getTransactionReturns, getWithdrawalItems, validateReturnDraft, validateWithdrawalDraft } from '@/services/withdrawalTransactions';
 import type { ReceiptKind } from '@/services/receipts';
+import { returnSignatureEntries } from '@/services/returnSignatures';
 
 export function useWithdrawals() {
   const tracker = useTracker();
@@ -25,7 +26,8 @@ export function useWithdrawals() {
   const [notes, setNotes] = useState(''); const [error, setError] = useState(''); const [detail, setDetail] = useState<Withdrawal | null>(null);
   const [requestId, setRequestId] = useState(() => `TX-${randomUUID()}`); const [reviewing, setReviewing] = useState(false);
   const [returningWithdrawal, setReturningWithdrawal] = useState<Withdrawal | null>(null);
-  const [returning, setReturning] = useState(''); const [receiving, setReceiving] = useState(''); const [condition, setCondition] = useState(''); const [remarks, setRemarks] = useState('');
+  const [returning, setReturningValue] = useState(''); const [receiving, setReceiving] = useState(''); const [condition, setCondition] = useState(''); const [remarks, setRemarks] = useState('');
+  const [returnSignature, setReturnSignatureValue] = useState<Signature>([]); const [returnSignatureSaved, setReturnSignatureSaved] = useState(false);
   const [returnQuantities, setReturnQuantities] = useState<Record<string, string>>({}); const [returnRequestId, setReturnRequestId] = useState(''); const [returnReviewing, setReturnReviewing] = useState(false);
   const [returnError, setReturnError] = useState(''); const [deleting, setDeleting] = useState<Withdrawal | null>(null);
   const [receiptId, setReceiptId] = useState(''); const [receiptKind, setReceiptKind] = useState<ReceiptKind>('withdrawal'); const [receiptReturnReference, setReceiptReturnReference] = useState('');
@@ -56,6 +58,9 @@ export function useWithdrawals() {
   }, [tracker.data.withdrawals, tracker.data.batches, receiptWithdrawal]);
   const receiptReturns = useMemo(() => getTransactionReturns(tracker.data, receiptItems), [tracker.data.returnRecords, receiptItems]);
   const receiptReturnOptions = useMemo(() => Array.from(new Map(receiptReturns.map(r => [r.reference, r])).values()), [receiptReturns]);
+  const receiptReturnSigners = useMemo(() => returnSignatureEntries(receiptReturns.filter(r => r.reference === receiptReturnReference)), [receiptReturns, receiptReturnReference]);
+  const setReturning = useCallback((value: string) => { if (saving.current) return; setReturningValue(value); setReturnSignatureValue([]); setReturnSignatureSaved(false); }, []);
+  const setReturnSignature = useCallback((value: Signature) => { if (saving.current) return; setReturnSignatureValue(value); setReturnSignatureSaved(false); }, []);
   const setReceiver = useCallback((value: string) => { setReceiverValue(value); setSignatureValue([]); setSaved(false); }, []);
   const setSignature = useCallback((value: Signature) => { setSignatureValue(value); setSaved(false); }, []);
   const beginWithdrawal = useCallback(() => {
@@ -125,13 +130,14 @@ export function useWithdrawals() {
   const beginReturn = useCallback((w: Withdrawal) => {
     if (saving.current || tracker.busy) return;
     setReceiptId(''); setOpen(false); setReturningWithdrawal(w); setReturning(''); setReceiving(''); setCondition(''); setRemarks(''); setReturnError(''); setReturnReviewing(false); setReturnRequestId(`RET-${randomUUID()}`); setReturnQuantities({ [w.id]: String(remainingQuantity(w)) });
-  }, [tracker.busy]);
+  }, [tracker.busy, setReturning]);
   const changeReturnQuantity = useCallback((id: string, value: string) => { if (!saving.current) setReturnQuantities(current => ({ ...current, [id]: value })); }, []);
   const selectAllReturns = useCallback(() => { if (!saving.current) setReturnQuantities(Object.fromEntries(returnItems.map(w => [w.id, String(remainingQuantity(w))]))); }, [returnItems]);
   function returnInput(): ReturnMovementInput {
+    if (!returnSignatureSaved) throw new Error('Returning personnel signature is required. Please sign and save the signature.');
     const lines = Object.entries(returnQuantities).filter(([, value]) => value.trim() !== '' && Number(value) !== 0).map(([withdrawalId, value]) => ({ withdrawalId, quantity: Number(value) }));
     if (lines.some(line => !returnItems.some(w => w.id === line.withdrawalId))) throw new Error('An item is no longer outstanding. Reopen the return form.');
-    return { requestId: returnRequestId, items: lines, returning, receiving, condition, remarks };
+    return { requestId: returnRequestId, items: lines, returning, receiving, condition, remarks, returnSignature };
   }
   function reviewReturn() {
     if (saving.current || tracker.busy) return;
@@ -140,10 +146,10 @@ export function useWithdrawals() {
   async function confirmReturn() {
     if (!returningWithdrawal || !returnReviewing || saving.current || tracker.busy) return;
     saving.current = true; setWorking(true); setReturnError('');
-    try { const input = returnInput(); validateReturnDraft(tracker.data, input); await tracker.returnItems(input); showReceipt(returningWithdrawal, 'return', input.requestId); }
+    try { const input = returnInput(); validateReturnDraft(tracker.data, input); await tracker.returnItems(input); showReceipt(returningWithdrawal, 'return', input.requestId); setReturnSignatureValue([]); setReturnSignatureSaved(false); }
     catch (e) { setReturnError(e instanceof Error ? e.message : 'Unable to save the return. Existing records were not changed.'); }
     finally { saving.current = false; setWorking(false); }
   }
   // Feedback is never named status; the list callback is constructed and exported explicitly.
-  return { ...tracker, getEquipmentStatus, query, setQuery, filter, setFilter, rows, open, beginWithdrawal, source, setSource, equipmentDropdownOpen, setEquipmentDropdownOpen, assetQuery, setAssetQuery, items: selectedItems, quantityDrafts, toggleEquipment, removeItem, changeQuantity, totalUnits, name, setName, serial, setSerial, manualNotes, setManualNotes, manualQuantity, setManualQuantity, addManual, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, notes, setNotes, error, detail, setDetail, returningWithdrawal, returning, setReturning, receiving, setReceiving, condition, setCondition, remarks, setRemarks, returnError, deleting, setDeleting, available, asset, assetCapacity, remainingQuantity, requestId, reviewing, setReviewing, reviewWithdrawal, submit, beginReturn, returnItems, returnQuantities, changeReturnQuantity, selectAllReturns, returnRequestId, returnReviewing, setReturnReviewing, reviewReturn, confirmReturn, receiptWithdrawal, receiptItems, receiptReturns, receiptReturnOptions, receiptKind, setReceiptKind, receiptReturnReference, setReceiptReturnReference, showReceipt, closeDialog, working };
+  return { ...tracker, getEquipmentStatus, query, setQuery, filter, setFilter, rows, open, beginWithdrawal, source, setSource, equipmentDropdownOpen, setEquipmentDropdownOpen, assetQuery, setAssetQuery, items: selectedItems, quantityDrafts, toggleEquipment, removeItem, changeQuantity, totalUnits, name, setName, serial, setSerial, manualNotes, setManualNotes, manualQuantity, setManualQuantity, addManual, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, notes, setNotes, error, detail, setDetail, returningWithdrawal, returning, setReturning, returnSignature, setReturnSignature, returnSignatureSaved, setReturnSignatureSaved, receiving, setReceiving, condition, setCondition, remarks, setRemarks, returnError, deleting, setDeleting, available, asset, assetCapacity, remainingQuantity, requestId, reviewing, setReviewing, reviewWithdrawal, submit, beginReturn, returnItems, returnQuantities, changeReturnQuantity, selectAllReturns, returnRequestId, returnReviewing, setReturnReviewing, reviewReturn, confirmReturn, receiptWithdrawal, receiptItems, receiptReturns, receiptReturnOptions, receiptReturnSigners, receiptKind, setReceiptKind, receiptReturnReference, setReceiptReturnReference, showReceipt, closeDialog, working };
 }
