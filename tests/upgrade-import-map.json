@@ -1,7 +1,6 @@
 {
   "imports": {
     "zod": "npm:zod@3.25.76",
-    "../services/movements": "../services/movements.ts",
-    "../services/returnSignatures": "../services/returnSignatures.ts"
+    "../services/movements": "../services/movements.ts"
   }
 }

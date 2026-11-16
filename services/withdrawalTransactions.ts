@@ -46,7 +46,7 @@ export function getTransactionReceiptModel(data: TrackerData, withdrawal: Withdr
   if (returns.length) return { reference, items, first, returns, returnReference: selected };
   if (!returnReference && withdrawal.returnedAt) {
     // Legacy returns retain their actual original timestamp and personnel.
-    return { reference, items, first, returnReference: withdrawal.id, returns: [{ id: `legacy-${withdrawal.id}`, reference: withdrawal.id, withdrawalId: withdrawal.id, assetId: withdrawal.assetId, quantity: withdrawal.returnedQuantity ?? withdrawal.quantity ?? 1, at: withdrawal.returnedAt, returning: withdrawal.returning || '', receiving: withdrawal.receiving || '', condition: withdrawal.condition || '', remarks: withdrawal.remarks || '', ...(withdrawal.returnSignature ? { returnSignature: withdrawal.returnSignature } : {}), ...(withdrawal.receivingSignature ? { receivingSignature: withdrawal.receivingSignature } : {}) }] };
+    return { reference, items, first, returnReference: withdrawal.id, returns: [{ id: `legacy-${withdrawal.id}`, reference: withdrawal.id, withdrawalId: withdrawal.id, assetId: withdrawal.assetId, quantity: withdrawal.returnedQuantity ?? withdrawal.quantity ?? 1, at: withdrawal.returnedAt, returning: withdrawal.returning || '', receiving: withdrawal.receiving || '', condition: withdrawal.condition || '', remarks: withdrawal.remarks || '' }] };
   }
   throw new Error('The selected return event could not be found. No return receipt was generated.');
 }

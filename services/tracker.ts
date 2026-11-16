@@ -6,17 +6,13 @@ import type { AuthorizedAlertSound } from './alertSoundValidation';
 import type { AcknowledgementSource } from './alarmAcknowledgements';
 import type { BatchRecord, NameDirectory, ReturnRecord } from './movements';
 
-export interface Asset { id: string; name: string; serial: string; notes: string; createdAt: string; updatedAt: string; archivedAt?: string; quantity?: number; category?: string; condition?: 'Serviceable' | 'Unserviceable' | 'Damage' }
+export interface Asset { id: string; name: string; serial: string; notes: string; createdAt: string; updatedAt: string; archivedAt?: string; quantity?: number }
 export interface Point { x: number; y: number }
 export type Signature = Point[][];
 export interface Withdrawal {
   id: string; assetId: string; releaser: string; receiver: string; signature: Signature;
   withdrawalAt: string; dueAt: string; createdAt: string; returnedAt?: string;
   returning?: string; receiving?: string; condition?: string; remarks?: string; notes: string;
-  /** Latest return signature; each individual event retains its own signed snapshot. */
-  returnSignature?: Signature;
-  /** Receiving personnel signature on new return events; legacy returning signatures stay unchanged. */
-  receivingSignature?: Signature;
   deletedAt?: string; alarmAcknowledgedAt?: string;
   batchId?: string; reference?: string; quantity?: number; returnedQuantity?: number;
   equipmentSnapshot?: { name: string; serial: string; description: string };
@@ -30,7 +26,6 @@ export interface Settings {
   /** Legacy shared selection, preserved for migration only. */
   alertSound?: AuthorizedAlertSound; enabled: boolean;
   warningHours: number; role: 'operator' | 'viewer';
-  backgroundNotifications?: boolean; advanceReminders?: boolean; dailyReminders?: boolean; pushSound?: 'default' | 'silent';
 }
 export interface InventoryImportAudit { id: string; filename: string; at: string; importedAssetIds: string[]; duplicatesSkipped: number; invalidRows: number; totalProcessed: number }
 export interface TrackerData { batches?: BatchRecord[]; returnRecords?: ReturnRecord[]; nameDirectory?: NameDirectory; inventoryImports?: InventoryImportAudit[]; version: number; assets: Asset[]; withdrawals: Withdrawal[]; activities: Activity[]; notices: Notice[]; settings: Settings; alertKeys?: string[] }

@@ -6,9 +6,7 @@ import { AudioProvider } from '@/contexts/AudioContext';
 import { useAdaptiveOrientation } from '@/hooks/useAdaptiveOrientation';
 import { CommandAlertProvider } from '@/contexts/CommandAlertContext';
 import { useTracker } from '@/hooks/useTracker';
-import { usePushObserver } from '@/hooks/usePushNotifications';
 function ThemedNavigator() {
-  usePushObserver();
   const { colors } = useTracker();
   return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}><Stack.Screen name="index" /><Stack.Screen name="(tabs)" /></Stack>;
 }

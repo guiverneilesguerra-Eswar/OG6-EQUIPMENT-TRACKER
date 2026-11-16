@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,7 +26,6 @@ export function Screen({ title, icon = 'radio-outline', action, children, dashbo
   const brandSize = commandLayout ? compactLandscape ? consoleType.brandMedium : consoleType.brand * scale : tablet ? consoleType.brandMedium : consoleType.brandCompact;
   return <SafeAreaView edges={commandLayout ? ['top', 'bottom', 'left', 'right'] : ['top', 'left', 'right']} style={[styles.root, { backgroundColor: c.headerBg, paddingLeft: sidebarWidth }]}>
     <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.workspace}>
     <View style={[styles.workspace, { backgroundColor: c.background }]}>
     {resolvedTheme === 'dark' ? <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={require('@/assets/tactical-wallpaper.webp')} style={[StyleSheet.absoluteFill, { opacity: 0.4 }]} contentFit="cover" contentPosition="center bottom" transition={200} /><LinearGradient colors={[c.wallpaperOverlay, c.background]} style={StyleSheet.absoluteFill} /></View> : null}
     <FlatList style={styles.scroll} data={[]} renderItem={() => null} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" ListHeaderComponent={<>
@@ -68,7 +67,6 @@ export function Screen({ title, icon = 'radio-outline', action, children, dashbo
     </>} />
     </View>
     <NotificationCenter visible={notifications} onClose={() => setNotifications(false)} />
-    </KeyboardAvoidingView>
   </SafeAreaView>;
 }
 const styles = StyleSheet.create({

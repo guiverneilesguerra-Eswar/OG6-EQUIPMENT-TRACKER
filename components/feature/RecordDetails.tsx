@@ -7,7 +7,6 @@ import { Badge, Chips, Empty } from '@/components/ui/Controls';
 import { ReceiptActions } from './ReceiptActions';
 import { ReceiptKind } from '@/services/receipts';
 import { SignaturePad } from './SignaturePad';
-import { ReturnSignatureView } from './ReturnSignatureView';
 import { remainingQuantity } from '@/services/movements';
 import { type, leading, density } from '@/constants/theme';
 
@@ -23,7 +22,7 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
   return <FormModal visible={Boolean(asset || w)} onClose={onClose} title={a?.name || 'Equipment details'} subtitle={a?.serial}>
     {a ? <>
       <Badge status={w?.deletedAt ? 'ARCHIVED' : w?.returnedAt ? 'RETURNED' : a.archivedAt ? 'ARCHIVED' : status(a.id)} />
-      {line('Asset ID', a.id)}{line('Equipment condition', a.condition || 'Not recorded')}{line('Category', a.category || 'Uncategorized')}{line('Notes', a.notes)}{line('Date added', formatDate(a.createdAt))}
+      {line('Asset ID', a.id)}{line('Notes', a.notes)}{line('Date added', formatDate(a.createdAt))}
       {a.archivedAt ? line('Equipment archived', formatDate(a.archivedAt)) : null}
       {canOperate && (a.archivedAt || w?.deletedAt) ? line('Administrator authorization reference', archiveEvent?.authorizationId) : null}
       {w && canOperate ? <>
@@ -35,13 +34,11 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
         <Text style={[styles.section, { color: c.text }]}>PDF RECEIPT</Text>
         {w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
         <ReceiptActions key={`${w.id}-${w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'}`} asset={a} withdrawal={w} kind={w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'} />
-        {w.returnedAt ? <>{line('Returned at', formatDate(w.returnedAt))}{line('Returning personnel', w.returning)}{line('Receiving personnel', w.receiving)}{line('Return condition', w.condition)}{line('Return remarks', w.remarks)}
-          {!data.returnRecords?.some(r => r.withdrawalId === w.id) ? <ReturnSignatureView record={{ ...w, returning: w.returning || '', receiving: w.receiving || '' }} /> : null}
-        </> : null}
+        {w.returnedAt ? <>{line('Returned at', formatDate(w.returnedAt))}{line('Returning personnel', w.returning)}{line('Receiving personnel', w.receiving)}{line('Return condition', w.condition)}{line('Return remarks', w.remarks)}</> : null}
       </> : null}
       {canOperate && data.returnRecords?.some(r => w ? r.withdrawalId === w.id : r.assetId === a?.id) ? <>
         <Text style={[styles.section, { color: c.text }]}>INDIVIDUAL RETURN HISTORY</Text>
-        <FlatList scrollEnabled={false} data={data.returnRecords.filter(r => w ? r.withdrawalId === w.id : r.assetId === a?.id)} keyExtractor={r => r.id} renderItem={({ item: r }) => <View style={[styles.history, { borderColor: c.border }]}><Text selectable style={[styles.value, { color: c.text }]}>{r.reference} · QTY {r.quantity}</Text><Text style={[styles.label, { color: c.subtle }]}>{formatDate(r.at)}</Text><Text style={[styles.value, { color: c.text }]}>Returning: {r.returning} · Receiving: {r.receiving}</Text><Text style={[styles.value, { color: c.text }]}>{r.condition} · {r.remarks || 'No remarks'}</Text><ReturnSignatureView record={r} /></View>} />
+        <FlatList scrollEnabled={false} data={data.returnRecords.filter(r => w ? r.withdrawalId === w.id : r.assetId === a?.id)} keyExtractor={r => r.id} renderItem={({ item: r }) => <View style={[styles.history, { borderColor: c.border }]}><Text selectable style={[styles.value, { color: c.text }]}>{r.reference} · QTY {r.quantity}</Text><Text style={[styles.label, { color: c.subtle }]}>{formatDate(r.at)}</Text><Text style={[styles.value, { color: c.text }]}>Returning: {r.returning} · Receiving: {r.receiving}</Text><Text style={[styles.value, { color: c.text }]}>{r.condition} · {r.remarks || 'No remarks'}</Text></View>} />
       </> : null}
       {acknowledgements.length ? <>
         <Text style={[styles.section, { color: c.text }]}>ALARM ACKNOWLEDGEMENT HISTORY</Text>

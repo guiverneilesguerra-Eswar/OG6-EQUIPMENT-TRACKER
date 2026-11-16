@@ -1,51 +1,14 @@
 import { useRef, useState } from 'react';
-import { PanResponder, StyleSheet, Text, View } from 'react-native';
+import { PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import type { Signature, Point } from '@/services/tracker';
+import { Signature, Point } from '@/services/tracker';
 import { useTracker } from '@/hooks/useTracker';
 import { Button } from '@/components/ui/Controls';
 import { radius, spacing, type, leading, density } from '@/constants/theme';
-interface Props {
-  receiver: string; value: Signature; onChange: (value: Signature) => void;
-  saved: boolean; onSave: () => void; readOnly?: boolean;
-  label?: string; nameLabel?: string; disabled?: boolean;
-}
-export function SignaturePad({ receiver, value, onChange, saved, onSave, readOnly = false, label = 'Receiver’s signature', nameLabel = 'receiver', disabled = false }: Props) {
-  const { colors: c } = useTracker(); const unlocked = Boolean(receiver.trim()) && !disabled;
-  const [, setDrawing] = useState<Signature>(value);
-  const canvasWidth = useRef(500); const strokes = useRef(value);
-  const props = useRef({ unlocked, readOnly, onChange }); props.current = { unlocked, readOnly, onChange };
-  const old = useRef(value);
-  if (old.current !== value) { old.current = value; strokes.current = value; }
-  const point = (x: number, y: number): Point => ({ x: Math.max(0, Math.min(500, x * 500 / canvasWidth.current)), y: Math.max(0, Math.min(180, y)) });
-  const responder = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => props.current.unlocked && !props.current.readOnly,
-    onMoveShouldSetPanResponder: () => props.current.unlocked && !props.current.readOnly,
-    onPanResponderGrant: e => {
-      if (!props.current.unlocked || props.current.readOnly) return;
-      strokes.current = [...strokes.current, [point(e.nativeEvent.locationX, e.nativeEvent.locationY)]]; setDrawing(strokes.current);
-    },
-    onPanResponderMove: e => {
-      if (!props.current.unlocked || props.current.readOnly || !strokes.current.length) return;
-      const next = [...strokes.current]; next[next.length - 1] = [...next[next.length - 1], point(e.nativeEvent.locationX, e.nativeEvent.locationY)];
-      strokes.current = next; setDrawing(next);
-    },
-    onPanResponderRelease: () => { if (props.current.unlocked && !props.current.readOnly) props.current.onChange(strokes.current); },
-    onPanResponderTerminate: () => { if (props.current.unlocked && !props.current.readOnly) props.current.onChange(strokes.current); },
-  })).current;
+interface Props { receiver: string; value: Signature; onChange: (value: Signature) => void; saved: boolean; onSave: () => void; readOnly?: boolean }
+export function SignaturePad({ receiver, value, onChange, saved, onSave, readOnly }: Props) { const { colors: c } = useTracker(); const unlocked = Boolean(receiver.trim()); const [, setDrawing] = useState<Signature>(value); const canvasWidth = useRef(500); const strokes = useRef(value); const props = useRef({ unlocked, readOnly, onChange }); props.current = { unlocked, readOnly, onChange }; const old = useRef(value); if (old.current !== value) { old.current = value; strokes.current = value; } const responder = useRef(PanResponder.create({ onStartShouldSetPanResponder: () => props.current.unlocked && !props.current.readOnly, onMoveShouldSetPanResponder: () => props.current.unlocked && !props.current.readOnly, onPanResponderGrant: e => { const point = { x: Math.max(0, Math.min(500, e.nativeEvent.locationX * 500 / canvasWidth.current)), y: Math.max(0, Math.min(180, e.nativeEvent.locationY)) }; strokes.current = [...strokes.current, [point]]; setDrawing(strokes.current); }, onPanResponderMove: e => { const point: Point = { x: Math.max(0, Math.min(500, e.nativeEvent.locationX * 500 / canvasWidth.current)), y: Math.max(0, Math.min(180, e.nativeEvent.locationY)) }; const next = [...strokes.current]; next[next.length - 1] = [...(next[next.length - 1] || []), point]; strokes.current = next; setDrawing(next); }, onPanResponderRelease: () => props.current.onChange(strokes.current), onPanResponderTerminate: () => props.current.onChange(strokes.current) })).current;
   const shown = readOnly ? value : strokes.current;
-  return <View style={styles.container}>
-    <Text style={[styles.label, { color: c.text }]}>{label}</Text>
-    <View accessibilityLabel={`${label} for ${receiver || nameLabel}`} onLayout={e => { canvasWidth.current = Math.max(1, e.nativeEvent.layout.width); }} {...(!readOnly ? responder.panHandlers : {})} style={[styles.pad, { backgroundColor: c.surfaceAlt, borderColor: saved ? c.success : unlocked ? c.borderBright : c.border }]}>
-      <Svg pointerEvents="none" width="100%" height={180} viewBox="0 0 500 180" preserveAspectRatio="none">{shown.map((stroke, i) => <Path key={i} d={stroke.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)).map((p, j) => `${j ? 'L' : 'M'}${p.x},${p.y}`).join(' ')} stroke={c.text} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}</Svg>
-      <View pointerEvents="none" style={[styles.baseline, { borderColor: c.border }]} />
-      {!unlocked && !readOnly ? <View style={[styles.locked, { backgroundColor: c.surfaceAlt }]}><Ionicons name="lock-closed-outline" color={c.subtle} size={24} /><Text style={[styles.lockText, { color: c.subtle }]}>{disabled ? 'Signature controls are disabled while saving.' : `Please enter the ${nameLabel} name to unlock the signature field.`}</Text></View> : !shown.length ? <View pointerEvents="none" style={styles.hint}><Ionicons name="pencil-outline" size={20} color={c.subtle} /><Text style={[styles.hintText, { color: c.subtle }]}>{readOnly ? 'No signature recorded for this historical event.' : 'Sign here using your finger, pen, or mouse'}</Text></View> : null}
-    </View>
-    {!readOnly ? <View style={styles.controls}>
-      <Button title="Clear signature" secondary compact disabled={!unlocked} onPress={() => { strokes.current = []; setDrawing([]); onChange([]); }} />
-      <Button title={saved ? 'Signature saved' : 'Save signature'} icon={saved ? 'checkmark-outline' : 'save-outline'} secondary compact disabled={!unlocked || !value.some(s => s.length > 2)} onPress={onSave} />
-    </View> : null}
-  </View>;
+  return <View style={styles.container}><Text style={[styles.label, { color: c.text }]}>Receiver’s signature</Text><View onLayout={e => { canvasWidth.current = Math.max(1, e.nativeEvent.layout.width); }} {...(!readOnly ? responder.panHandlers : {})} style={[styles.pad, { backgroundColor: c.surfaceAlt, borderColor: saved ? c.success : unlocked ? c.borderBright : c.border }]}><Svg pointerEvents="none" width="100%" height={180} viewBox="0 0 500 180" preserveAspectRatio="none">{shown.map((stroke, i) => <Path key={i} d={stroke.map((p, j) => `${j ? 'L' : 'M'}${p.x},${p.y}`).join(' ')} stroke={c.text} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}</Svg><View pointerEvents="none" style={[styles.baseline, { borderColor: c.border }]} />{!unlocked ? <View style={[styles.locked, { backgroundColor: c.surfaceAlt }]}><Ionicons name="lock-closed-outline" color={c.subtle} size={24} /><Text style={[styles.lockText, { color: c.subtle }]}>Please enter the receiver’s name to unlock the signature field.</Text></View> : !shown.length ? <View pointerEvents="none" style={styles.hint}><Ionicons name="pencil-outline" size={20} color={c.subtle} /><Text style={[styles.hintText, { color: c.subtle }]}>Sign here using your finger, pen, or mouse</Text></View> : null}</View>{!readOnly ? <View style={styles.controls}><Button title="Clear signature" secondary compact disabled={!unlocked} onPress={() => { strokes.current = []; setDrawing([]); onChange([]); }} /><Button title={saved ? 'Signature saved' : 'Save signature'} icon={saved ? 'checkmark-outline' : 'save-outline'} secondary compact disabled={!unlocked || !value.some(s => s.length > 2)} onPress={onSave} /></View> : null}</View>;
 }
 const styles = StyleSheet.create({ container: { marginBottom: density.sectionGap }, label: { fontSize: type.meta, fontWeight: '700', textTransform: 'uppercase', includeFontPadding: false, marginBottom: density.fieldGap }, pad: { height: 180, borderWidth: 1, borderRadius: radius.sm + 4, overflow: 'hidden' }, baseline: { position: 'absolute', bottom: 32, left: spacing.lg, right: spacing.lg, borderBottomWidth: 1 }, locked: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', padding: density.cardPadding, gap: density.iconGap }, lockText: { fontSize: type.small, lineHeight: leading.small, textAlign: 'center' }, hint: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', padding: density.cardPadding, gap: density.iconGap }, hintText: { fontSize: type.small, lineHeight: leading.small, textAlign: 'center' }, controls: { flexDirection: 'row', flexWrap: 'wrap', gap: density.iconGap, marginTop: density.headerGap } });
