@@ -3,10 +3,11 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import type { Asset, Withdrawal, TrackerData } from './tracker';
 import type { ReceiptPreviewDocument } from './receiptPreview';
+import type { ReceiptTextDocument } from './receiptText';
 import { createTransactionReceipt } from './transactionReceipts';
 
 export type ReceiptKind = 'withdrawal' | 'return';
-export interface ReceiptFile { filename: string; bytes: Uint8Array; base64: string; preview?: ReceiptPreviewDocument }
+export interface ReceiptFile { filename: string; bytes: Uint8Array; base64: string; preview?: ReceiptPreviewDocument; readable?: ReceiptTextDocument }
 export type ReceiptDelivery = 'downloaded' | 'saved' | 'share-sheet' | 'shared' | 'cancelled' | 'download-fallback';
 
 export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKind, data?: TrackerData, returnReference?: string): Promise<ReceiptFile> {
