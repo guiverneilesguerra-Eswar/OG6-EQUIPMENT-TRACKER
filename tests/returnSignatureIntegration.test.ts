@@ -14,9 +14,9 @@ Deno.test('unified return form captures receiving personnel signature and fixed 
 });
 Deno.test('PDF and history resolve actual signature role without relabeling legacy strokes', async () => {
   const [pdf, fallback, history, resolver] = await Promise.all([source('../services/transactionReceipts.ts'), source('../services/receipts.ts'), source('../components/feature/RecordDetails.tsx'), source('../services/returnSignatures.ts')]);
-  check(pdf.includes('getReturnSignatureDetails(event)') && pdf.includes('details.person, details.signature'), 'PDF uses selected event signer');
-  check(pdf.includes('${returnSignatureHtml}') && pdf.includes('escape(details.label.toUpperCase())'), 'Print uses actual signer label');
-  check(fallback.includes('getReturnSignatureDetails(withdrawal)'), 'Fallback PDF supports both roles');
+  check(pdf.includes('getReturnSignatureDetails(event)') && pdf.includes('person: details.person, signature: details.signature'), 'PDF uses selected event signer');
+  check(pdf.includes('label: details.label.toUpperCase()') && pdf.includes('createSingleA4Document(content.title, content.blocks)'), 'PDF and print use actual signer label in shared one-sheet layout');
+  check(fallback.includes('return createTransactionReceipt(localSnapshot, withdrawal, kind)'), 'Fallback PDF uses the shared role-aware renderer');
   check(history.includes('<ReturnSignatureView record={r} />'), 'History displays immutable event signature');
   check(resolver.includes('Returning personnel signature (historical)'), 'Historical signatures are never attributed to receiving personnel');
 });

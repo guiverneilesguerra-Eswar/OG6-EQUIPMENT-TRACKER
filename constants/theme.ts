@@ -12,6 +12,7 @@ export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
 export const density = { cardGap: 8, cardPadding: 12, sectionGap: 8, fieldGap: 4, headerGap: 4, iconGap: 8, valueGap: 2 };
 export const radius = { sm: 8, md: 16, lg: 20, pill: 99 };
 export const type = { tiny: 12, micro: 14, caption: 16, meta: 16, small: 16, label: 20, body: 16, section: 28, title: 32, hero: 48, brand: 48, metric: 56 };
+export const signatureLayout = { compactHeight: 180, expandedMaxWidth: 960, expandedMinHeight: 120, canvasRadius: 12, baselineInset: 32, controlHeight: 48 };
 export const leading = { caption: 20, footer: 20, small: 22, compact: 24, label: 24, detail: 24, body: 26, relaxed: 26, long: 30 };
 export const layout = { sidebarWidth: 226, mediumSidebarWidth: 140, compactSidebarWidth: 132, contentWidth: 1488, heroHeight: 144, compactHeroHeight: 112, metricHeight: 104, compactMetricHeight: 96, metricIcon: 52, compactMetricIcon: 36, referenceWidth: 1672, pageInset: 16, overviewHeight: 306, lowerHeight: 400, activityHeight: 56, railFraction: 0.349, panelGap: density.cardGap };
 export const consoleType = { brand: 40, brandMedium: 32, brandCompact: 24, page: 28, pageCompact: 22, section: 24, sectionCompact: 20, metric: 48, metricCompact: 36, metricLabel: 18, activity: 18, activityMeta: 16, status: 16 };

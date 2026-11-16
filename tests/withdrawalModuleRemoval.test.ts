@@ -20,12 +20,12 @@ Deno.test('the separate batch module is removed while all five standard tabs rem
   check(hook.includes('await tracker.returnItems(input)'), 'Use the existing transaction store for partial returns');
 });
 Deno.test('shared receipt actions generate and print every equipment line and selected return event', async () => {
-  const [receipts, transactionReceipts, hook, actions] = await Promise.all([source('../services/receipts.ts'), source('../services/transactionReceipts.ts'), source('../hooks/useReceipt.ts'), source('../components/feature/ReceiptActions.tsx')]);
+  const [receipts, transactionReceipts, hook, actions, renderer] = await Promise.all([source('../services/receipts.ts'), source('../services/transactionReceipts.ts'), source('../hooks/useReceipt.ts'), source('../components/feature/ReceiptActions.tsx'), source('../services/singleA4Document.ts')]);
   check(receipts.includes('if (data) return createTransactionReceipt(data, withdrawal, kind, returnReference)'), 'Existing receipt API must use complete transaction data');
-  check(transactionReceipts.includes('for (const w of items)') && transactionReceipts.includes('model.items.map(w =>'), 'Both PDF and print must include all equipment');
+  check(transactionReceipts.includes('rows: items.map(w =>') && transactionReceipts.includes('createSingleA4Document(content.title, content.blocks)'), 'PDF and print use the same complete item layout');
   check(transactionReceipts.includes('getTransactionReceiptModel(data, withdrawal, kind, returnReference)'), 'Return receipts must select an actual immutable return event');
-  check(transactionReceipts.includes('htmlEntities: Record<string, string>'), 'Printable user text must be escaped safely');
-  check(transactionReceipts.includes('Print.printAsync({ html: transactionPrintHtml'), 'Printing must open a real platform/browser print flow');
+  check(renderer.includes('htmlEntities: Record<string, string>') && renderer.includes('escape(safe)'), 'Printable user text must be escaped safely');
+  check(transactionReceipts.includes('Print.printAsync({ html: await transactionPrintHtml'), 'Printing must open a real platform/browser print flow');
   check(hook.includes('receiptData, returnReference') && actions.includes('Print complete receipt'), 'Existing actions must expose complete exports and printing');
 });
 Deno.test('compatibility fields and durable local persistence remain unchanged', async () => {

@@ -28,8 +28,10 @@ export function useWithdrawals() {
   const [requestId, setRequestId] = useState(() => `TX-${randomUUID()}`); const [reviewing, setReviewing] = useState(false);
   const [returningWithdrawal, setReturningWithdrawal] = useState<Withdrawal | null>(null);
   const [batchReturn, setBatchReturn] = useState(false); const [returnQuery, setReturnQuery] = useState('');
+  const [returnDropdownOpen, setReturnDropdownOpen] = useState(true);
   const [returning, setReturningValue] = useState(''); const [receiving, setReceivingValue] = useState(''); const [condition, setCondition] = useState(''); const [remarks, setRemarks] = useState('');
   const [receivingSignature, setReceivingSignatureValue] = useState<Signature>([]); const [receivingSignatureSaved, setReceivingSignatureSaved] = useState(false);
+  // Key presence is selection. Blank/zero drafts do not unmount a focused quantity field.
   const [returnQuantities, setReturnQuantities] = useState<Record<string, string>>({}); const [returnRequestId, setReturnRequestId] = useState(''); const [returnReviewing, setReturnReviewing] = useState(false);
   const [returnError, setReturnError] = useState(''); const [deleting, setDeleting] = useState<Withdrawal | null>(null);
   const [receiptId, setReceiptId] = useState(''); const [receiptKind, setReceiptKind] = useState<ReceiptKind>('withdrawal'); const [receiptReturnReference, setReceiptReturnReference] = useState('');
@@ -59,15 +61,13 @@ export function useWithdrawals() {
   const returnLines = useMemo(() => selectedReturnLines(returnQuantities), [returnQuantities]);
   const returnUnits = returnLines.reduce((sum, line) => sum + (Number.isSafeInteger(line.quantity) && line.quantity > 0 ? line.quantity : 0), 0);
   const visibleReturnItems = useMemo(() => returnReviewing ? returnItems.filter(w => returnLines.some(line => line.withdrawalId === w.id)) : filterReturnItems(tracker.data, returnItems, returnQuery), [tracker.data.assets, returnItems, returnQuery, returnReviewing, returnLines]);
+  const selectedReturnItems = useMemo(() => returnItems.filter(w => Object.prototype.hasOwnProperty.call(returnQuantities, w.id)), [returnItems, returnQuantities]);
   const receiptItems = useMemo(() => {
     if (!receiptWithdrawal) return [];
     try { return getTransactionReceiptModel(tracker.data, receiptWithdrawal, receiptKind, receiptReturnReference || undefined).items; } catch { return [receiptWithdrawal]; }
   }, [tracker.data.withdrawals, tracker.data.batches, tracker.data.returnRecords, receiptWithdrawal, receiptKind, receiptReturnReference]);
   const receiptIsBatchReturn = receiptKind === 'return' && new Set(receiptItems.map(w => w.reference || w.batchId || w.id)).size > 1;
   const receiptReturns = useMemo(() => getTransactionReturns(tracker.data, receiptItems), [tracker.data.returnRecords, receiptItems]);
-  // Event choices remain anchored to the original transaction. A chosen batch
-  // event expands its receipt to all participating transactions, without exposing
-  // unrelated events belonging only to other transactions in that expanded list.
   const receiptReturnOptions = useMemo(() => {
     if (!receiptWithdrawal) return [];
     try {
@@ -139,7 +139,6 @@ export function useWithdrawals() {
     saving.current = true; setWorking(true); setError('');
     try {
       const input = draftInput(); validateWithdrawalDraft(tracker.data, input, saved);
-      // The provider rechecks all availability under its lock and writes one full snapshot.
       const recorded = await tracker.withdrawTransaction(input);
       showReceipt({ id: recorded.withdrawalIds[0] }, 'withdrawal'); setItems([]); setQuantityDrafts({}); setSignatureValue([]); setSaved(false);
     } catch (e) { setError(e instanceof Error ? e.message : 'Unable to save the withdrawal. Existing records were not changed.'); }
@@ -147,11 +146,11 @@ export function useWithdrawals() {
   }
   const beginReturn = useCallback((w: Withdrawal) => {
     if (saving.current || tracker.busy) return;
-    setBatchReturn(false); setReturnQuery(''); setReceiptId(''); setOpen(false); setReturningWithdrawal(w); setReturning(''); setReceiving(''); setCondition(''); setRemarks(''); setReturnError(''); setReturnReviewing(false); setReturnRequestId(`RET-${randomUUID()}`); setReturnQuantities({ [w.id]: String(remainingQuantity(w)) });
+    setBatchReturn(false); setReturnQuery(''); setReturnDropdownOpen(true); setReceiptId(''); setOpen(false); setReturningWithdrawal(w); setReturning(''); setReceiving(''); setCondition(''); setRemarks(''); setReturnError(''); setReturnReviewing(false); setReturnRequestId(`RET-${randomUUID()}`); setReturnQuantities({ [w.id]: String(remainingQuantity(w)) });
   }, [tracker.busy, setReturning, setReceiving]);
   const beginBatchReturn = useCallback(() => {
     if (saving.current || tracker.busy || !tracker.loaded || !outstandingItems.length) return;
-    setOpen(false); setReceiptId(''); setReturningWithdrawal(null); setBatchReturn(true); setReturnQuery(''); setReturnQuantities({});
+    setOpen(false); setReceiptId(''); setReturningWithdrawal(null); setBatchReturn(true); setReturnQuery(''); setReturnDropdownOpen(true); setReturnQuantities({});
     setReturning(''); setReceiving(''); setCondition(''); setRemarks(''); setReturnError(''); setReturnReviewing(false); setReturnRequestId(`RET-${randomUUID()}`);
   }, [tracker.busy, tracker.loaded, outstandingItems.length, setReturning, setReceiving]);
   const changeReturnQuantity = useCallback((id: string, value: string) => { if (!saving.current) setReturnQuantities(current => ({ ...current, [id]: value })); }, []);
@@ -160,17 +159,23 @@ export function useWithdrawals() {
   const toggleReturnItem = useCallback((id: string) => {
     if (saving.current || tracker.busy) return;
     const item = returnItems.find(w => w.id === id); if (!item) return;
-    setReturnQuantities(current => ({ ...current, [id]: current[id]?.trim() && Number(current[id]) !== 0 ? '' : String(remainingQuantity(item)) }));
+    setReturnQuantities(current => {
+      const next = { ...current };
+      if (Object.prototype.hasOwnProperty.call(next, id)) delete next[id];
+      else next[id] = String(remainingQuantity(item));
+      return next;
+    });
   }, [returnItems, tracker.busy]);
   function returnInput(): ReturnMovementInput {
     if (!receivingSignatureSaved) throw new Error('Receiving personnel signature is required. Please sign and save the signature.');
     const lines = selectedReturnLines(returnQuantities);
+    if (selectedReturnItems.some(w => !returnQuantities[w.id]?.trim() || Number(returnQuantities[w.id]) === 0)) throw new Error('Enter a positive whole quantity for each selected item, or remove it from the selected list.');
     if (lines.some(line => !returnItems.some(w => w.id === line.withdrawalId))) throw new Error('An item is no longer outstanding. Reopen the return form.');
     return { requestId: returnRequestId, items: lines, returning, receiving, condition, remarks, receivingSignature };
   }
   function reviewReturn() {
     if (saving.current || tracker.busy) return;
-    setReturnError(''); try { validateReturnDraft(tracker.data, returnInput()); setReturnReviewing(true); } catch (e) { setReturnError(e instanceof Error ? e.message : 'Unable to review the return.'); }
+    setReturnError(''); try { validateReturnDraft(tracker.data, returnInput()); setReturnDropdownOpen(false); setReturnReviewing(true); } catch (e) { setReturnError(e instanceof Error ? e.message : 'Unable to review the return.'); }
   }
   async function confirmReturn() {
     if ((!returningWithdrawal && !batchReturn) || !returnReviewing || saving.current || tracker.busy) return;
@@ -184,6 +189,5 @@ export function useWithdrawals() {
     catch (e) { setReturnError(e instanceof Error ? e.message : 'Unable to save the return. Existing records were not changed.'); }
     finally { saving.current = false; setWorking(false); }
   }
-  // Feedback is never named status; the list callback is constructed and exported explicitly.
-  return { ...tracker, getEquipmentStatus, query, setQuery, filter, setFilter, rows, open, beginWithdrawal, source, setSource, equipmentDropdownOpen, setEquipmentDropdownOpen, assetQuery, setAssetQuery, items: selectedItems, quantityDrafts, toggleEquipment, removeItem, changeQuantity, totalUnits, name, setName, serial, setSerial, manualNotes, setManualNotes, manualQuantity, setManualQuantity, addManual, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, notes, setNotes, error, detail, setDetail, returningWithdrawal, batchReturn, beginBatchReturn, returnQuery, setReturnQuery, outstandingItems, visibleReturnItems, returnLines, returnUnits, clearReturnSelection, toggleReturnItem, equipmentConditions, receiptIsBatchReturn, returning, setReturning, receivingSignature, setReceivingSignature, receivingSignatureSaved, setReceivingSignatureSaved, receiving, setReceiving, condition, setCondition, remarks, setRemarks, returnError, deleting, setDeleting, available, asset, assetCapacity, remainingQuantity, requestId, reviewing, setReviewing, reviewWithdrawal, submit, beginReturn, returnItems, returnQuantities, changeReturnQuantity, selectAllReturns, returnRequestId, returnReviewing, setReturnReviewing, reviewReturn, confirmReturn, receiptWithdrawal, receiptItems, receiptReturns, receiptReturnOptions, receiptReturnSigners, receiptKind, setReceiptKind, receiptReturnReference, setReceiptReturnReference, showReceipt, closeDialog, working };
+  return { ...tracker, getEquipmentStatus, query, setQuery, filter, setFilter, rows, open, beginWithdrawal, source, setSource, equipmentDropdownOpen, setEquipmentDropdownOpen, assetQuery, setAssetQuery, items: selectedItems, quantityDrafts, toggleEquipment, removeItem, changeQuantity, totalUnits, name, setName, serial, setSerial, manualNotes, setManualNotes, manualQuantity, setManualQuantity, addManual, releaser, setReleaser, receiver, setReceiver, signature, setSignature, saved, setSaved, withdrawalAt, setWithdrawalAt, dueAt, setDueAt, notes, setNotes, error, detail, setDetail, returningWithdrawal, batchReturn, beginBatchReturn, returnQuery, setReturnQuery, returnDropdownOpen, setReturnDropdownOpen, selectedReturnItems, outstandingItems, visibleReturnItems, returnLines, returnUnits, clearReturnSelection, toggleReturnItem, equipmentConditions, receiptIsBatchReturn, returning, setReturning, receivingSignature, setReceivingSignature, receivingSignatureSaved, setReceivingSignatureSaved, receiving, setReceiving, condition, setCondition, remarks, setRemarks, returnError, deleting, setDeleting, available, asset, assetCapacity, remainingQuantity, requestId, reviewing, setReviewing, reviewWithdrawal, submit, beginReturn, returnItems, returnQuantities, changeReturnQuantity, selectAllReturns, returnRequestId, returnReviewing, setReturnReviewing, reviewReturn, confirmReturn, receiptWithdrawal, receiptItems, receiptReturns, receiptReturnOptions, receiptReturnSigners, receiptKind, setReceiptKind, receiptReturnReference, setReceiptReturnReference, showReceipt, closeDialog, working };
 }

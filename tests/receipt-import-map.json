@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "pdf-lib": "npm:pdf-lib@1.17.1",
+    "../constants/theme": "../constants/theme.ts",
+    "../constants/pdfLayout": "../constants/pdfLayout.ts"
+  }
+}

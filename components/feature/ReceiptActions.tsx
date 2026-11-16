@@ -20,6 +20,7 @@ export const ReceiptActions = memo(function ReceiptActions({ asset, withdrawal, 
     <Button title={Platform.OS === 'web' ? 'Download PDF' : 'Save PDF on device'} secondary icon="download-outline" disabled={!m.file || m.delivering || m.printing} onPress={() => void m.deliver(false)} />
     <Button title="Print complete receipt" secondary icon="print-outline" disabled={!m.file || m.delivering} loading={m.printing} onPress={() => void m.print()} />
     {m.message ? <Text accessibilityRole="alert" style={[styles.message, { color: c.primary }]}>{m.message}</Text> : null}
+    <Text style={[styles.privacy, { color: c.subtle }]}>One A4 sheet. All items and signatures are retained; large batches or long remarks use smaller text. For easier reading, zoom the PDF or export the Excel report.</Text>
     <Text style={[styles.privacy, { color: c.subtle }]}>Contains personnel details and a signature. Share only with authorized recipients.</Text>
   </View>;
 });
