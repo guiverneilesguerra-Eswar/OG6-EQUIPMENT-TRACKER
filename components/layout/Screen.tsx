@@ -23,13 +23,15 @@ export function Screen({ title, icon = 'radio-outline', action, children, dashbo
   const [notifications, setNotifications] = useState(false);
   const unread = data.notices.filter(item => !item.read).length;
   const heroHeight = compactLandscape ? layout.compactHeroHeight : Math.round(layout.heroHeight * scale);
-  const brandSize = commandLayout ? compactLandscape ? consoleType.brandCompact : consoleType.brand * scale : tablet ? consoleType.brandMedium : consoleType.brandCompact;
+  const brandSize = commandLayout ? compactLandscape ? consoleType.brandMedium : consoleType.brand * scale : tablet ? consoleType.brandMedium : consoleType.brandCompact;
   return <SafeAreaView edges={commandLayout ? ['top', 'bottom', 'left', 'right'] : ['top', 'left', 'right']} style={[styles.root, { backgroundColor: c.headerBg, paddingLeft: sidebarWidth }]}>
     <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
-    <FlatList style={[styles.scroll, { backgroundColor: c.background }]} data={[]} renderItem={() => null} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" ListHeaderComponent={<>
+    <View style={[styles.workspace, { backgroundColor: c.background }]}>
+    {resolvedTheme === 'dark' ? <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={require('@/assets/tactical-wallpaper.webp')} style={[StyleSheet.absoluteFill, { opacity: 0.4 }]} contentFit="cover" contentPosition="center bottom" transition={200} /><LinearGradient colors={[c.wallpaperOverlay, c.background]} style={StyleSheet.absoluteFill} /></View> : null}
+    <FlatList style={styles.scroll} data={[]} renderItem={() => null} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" ListHeaderComponent={<>
       <View style={[styles.hero, { backgroundColor: c.headerBg }, commandLayout ? { minHeight: heroHeight } : null]}>
-        {resolvedTheme === 'dark' ? <Image source={require('@/assets/command-network.webp')} style={[StyleSheet.absoluteFill, { opacity: 0.12 }]} contentFit="cover" contentPosition="right center" transition={200} /> : null}
-        <LinearGradient pointerEvents="none" colors={[c.headerSurface, c.heroOverlay, c.headerBg]} locations={[0, 0.62, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+        {resolvedTheme === 'dark' ? <Image source={require('@/assets/command-network.webp')} style={[StyleSheet.absoluteFill, { opacity: 0.95 }]} contentFit="cover" contentPosition="right center" transition={200} /> : null}
+        <LinearGradient pointerEvents="none" colors={resolvedTheme === 'dark' ? [c.headerBg, c.heroOverlay, c.heroOverlay] : [c.headerSurface, c.heroOverlay, c.headerBg]} locations={[0, 0.62, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <View style={[styles.heroContent, { paddingHorizontal: pagePadding, paddingTop: density.cardPadding }, commandLayout ? { minHeight: heroHeight } : null]}>
           <View style={styles.brandRow}>
             {!commandLayout ? <CommandEmblem compact /> : null}
@@ -63,11 +65,12 @@ export function Screen({ title, icon = 'radio-outline', action, children, dashbo
         {!dashboard ? <View style={[styles.footer, { borderColor: c.border }]}><View style={styles.systemStatus}><View style={[styles.statusDot, { backgroundColor: c.signalGreen }]} /><Text style={[styles.footerText, { color: c.subtle }]}>OG6 · C4S ACCOUNTABILITY</Text></View><Text style={[styles.footerText, { color: c.subtle }]}>DEVICE-LOCAL WORKSPACE</Text></View> : null}
       </View>
     </>} />
+    </View>
     <NotificationCenter visible={notifications} onClose={() => setNotifications(false)} />
   </SafeAreaView>;
 }
 const styles = StyleSheet.create({
-  root: { flex: 1 }, scroll: { flex: 1 }, hero: { overflow: 'hidden' },
+  root: { flex: 1 }, workspace: { flex: 1, overflow: 'hidden' }, scroll: { flex: 1 }, hero: { overflow: 'hidden' },
   heroContent: { width: '100%', maxWidth: layout.contentWidth, alignSelf: 'center', paddingBottom: density.cardPadding, gap: density.iconGap },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: density.iconGap }, brandCopy: { flex: 1, minWidth: 1 }, brandTitle: { fontWeight: '800', letterSpacing: -0.6, includeFontPadding: false },
   brandSubtitle: { lineHeight: leading.small, includeFontPadding: false }, consoleRow: { maxWidth: '100%', flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-end', gap: density.iconGap },

@@ -43,9 +43,9 @@ Backups contain sensitive personnel/equipment data and are **not encrypted**. Th
 
 ## Themes
 
-Settings provides Light Mode, Dark Mode and System Default. Both actual surface palettes use a black-and-yellow command identity with theme-specific contrast tokens. System Default reacts to the device color scheme. The preference remains in the existing settings snapshot.
+Settings provides Light Mode, Dark Mode and System Default. Both actual surface palettes use the restored navy-and-blue command identity with theme-specific contrast tokens. System Default reacts to the device color scheme. The preference remains in the existing settings snapshot.
 
-Headers, navigation, dashboard metrics, inputs, dialogs, receipt controls, status badges and new name/backup/batch sections consume the resolved theme. Light mode does not display tactical dark wallpaper. Gold buttons use dark text rather than white text. Exported PDFs use the readable light document palette.
+Headers, navigation, dashboard metrics, inputs, dialogs, receipt controls, status badges and new name/backup/batch sections consume the resolved theme. Light mode does not display tactical dark wallpaper. Blue buttons use contrasting white labels. The reference tactical header and sidebar are visible in dark mode; the supplied Philippine Army 4ID G6 crest replaces the previous drawn emblem. Exported PDFs use the readable light document palette.
 
 ## Administrator verification
 

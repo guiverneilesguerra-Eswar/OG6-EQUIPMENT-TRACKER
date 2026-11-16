@@ -33,16 +33,16 @@ export function TabNavigation({ state, navigation }: BottomTabBarProps) {
     </Pressable>;
   });
   if (commandLayout) return <View style={[styles.sidebar, { width: sidebarWidth + insets.left, paddingLeft: spacing.sm + insets.left, backgroundColor: c.headerBg, borderColor: c.headerBorder, paddingTop: insets.top + (density.cardPadding), paddingBottom: insets.bottom + spacing.sm }]}>
-    {resolvedTheme === 'dark' ? <View pointerEvents="none" style={[styles.wallpaper, { opacity: 0.12 }]}><Image source={require('@/assets/command-sidebar.webp')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center bottom" transition={200} /><LinearGradient colors={[c.headerBg, c.transparent, c.heroOverlay]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} /></View> : null}
+    {resolvedTheme === 'dark' ? <View pointerEvents="none" style={styles.wallpaper}><Image source={require('@/assets/command-sidebar.webp')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="center bottom" transition={200} /><LinearGradient colors={[c.headerBg, c.transparent, c.heroOverlay]} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} /></View> : null}
     <ScrollView style={styles.sideScroll} contentContainerStyle={styles.sideContent} showsVerticalScrollIndicator={false}>
-      <View style={[styles.sideBrand, { paddingBottom: compactLandscape ? spacing.sm : density.sectionGap }]}><CommandEmblem compact={compactLandscape} scale={scale * 0.8} /></View>
+      <View style={[styles.sideBrand, { paddingBottom: compactLandscape ? spacing.sm : density.sectionGap }]}><CommandEmblem scale={compactLandscape ? 0.76 : scale * 0.8} /></View>
       {items}
     </ScrollView>
   </View>;
   return <View style={[styles.bottom, { backgroundColor: c.surface, borderColor: c.border, height: Platform.OS === 'web' ? 70 : insets.bottom + 60, paddingBottom: Platform.OS === 'web' ? spacing.sm : insets.bottom + spacing.sm }]}>{items}</View>;
 }
 const styles = StyleSheet.create({
-  sidebar: { position: 'absolute', top: 0, bottom: 0, left: 0, borderRightWidth: 1.5, paddingHorizontal: spacing.sm, overflow: 'hidden' }, wallpaper: { position: 'absolute', bottom: 0, top: '47%', left: 0, right: 0 }, sideScroll: { flex: 1 }, sideContent: { paddingBottom: spacing.sm }, sideBrand: { alignItems: 'center' },
+  sidebar: { position: 'absolute', top: 0, bottom: 0, left: 0, borderRightWidth: 1.5, paddingHorizontal: spacing.sm, overflow: 'hidden' }, wallpaper: { position: 'absolute', bottom: 0, top: '43%', left: 0, right: 0 }, sideScroll: { flex: 1 }, sideContent: { paddingBottom: spacing.sm }, sideBrand: { alignItems: 'center' },
   sideTab: { borderRadius: radius.sm + 4, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: density.headerGap, marginBottom: density.valueGap, shadowOffset: { width: 0, height: 0 }, shadowRadius: 12 }, sideText: { fontWeight: '700', flex: 1, includeFontPadding: false },
   bottom: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, paddingHorizontal: spacing.md, paddingTop: spacing.sm }, bottomTab: { flex: 1, minHeight: 48, borderRadius: radius.sm, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: density.valueGap, paddingHorizontal: density.valueGap }, bottomText: { lineHeight: type.micro, fontWeight: '700', textAlign: 'center', alignSelf: 'stretch', includeFontPadding: false },
 });

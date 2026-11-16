@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { normalizeAudioPreferences } from './audioPreferences';
+import { commandAppearanceKey, restoreCommandTheme } from './commandAppearance';
 import { normalizeAudioSelections } from './audioConfiguration';
 import type { AuthorizedAlertSound } from './alertSoundValidation';
 import type { AcknowledgementSource } from './alarmAcknowledgements';
@@ -36,10 +37,21 @@ export const emptyData = (): TrackerData => ({
 });
 export async function loadData(): Promise<TrackerData> {
   const raw = await AsyncStorage.getItem(key);
-  if (!raw) return emptyData();
-  const parsed = JSON.parse(raw);
+  if (!raw) {
+    // A new installation already starts in the reference dark theme.
+    await AsyncStorage.setItem(commandAppearanceKey, '1');
+    return emptyData();
+  }
+  let parsed = JSON.parse(raw);
   if (parsed.version !== 1 || !Array.isArray(parsed.assets) || !Array.isArray(parsed.withdrawals) || !Array.isArray(parsed.activities) || !Array.isArray(parsed.notices)) {
     throw new Error('Local records could not be loaded. Existing data has not been changed.');
+  }
+  if (await AsyncStorage.getItem(commandAppearanceKey) !== '1') {
+    // One appearance-only update: preserve the original complete record snapshot.
+    // Persist before marking the update applied; later user theme choices remain intact.
+    parsed = restoreCommandTheme(parsed, false);
+    await saveData(parsed);
+    await AsyncStorage.setItem(commandAppearanceKey, '1');
   }
   // Preserve legacy acknowledgement decisions independently of later notice clearing.
   const acknowledged = new Set(parsed.notices.filter((n: Notice) => n.type === 'overdue' && n.acknowledged).map((n: Notice) => n.withdrawalId));
