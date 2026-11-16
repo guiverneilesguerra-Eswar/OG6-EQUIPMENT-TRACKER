@@ -13,8 +13,10 @@ export interface Withdrawal {
   id: string; assetId: string; releaser: string; receiver: string; signature: Signature;
   withdrawalAt: string; dueAt: string; createdAt: string; returnedAt?: string;
   returning?: string; receiving?: string; condition?: string; remarks?: string; notes: string;
-  /** Latest return signature; each individual event retains its own signed snapshot. */
+  /** Historical returning-personnel signature; never relabeled as a receiving signature. */
   returnSignature?: Signature;
+  /** Latest receiving-personnel signature; immutable copies are retained per return event. */
+  receivingSignature?: Signature;
   deletedAt?: string; alarmAcknowledgedAt?: string;
   batchId?: string; reference?: string; quantity?: number; returnedQuantity?: number;
   equipmentSnapshot?: { name: string; serial: string; description: string };

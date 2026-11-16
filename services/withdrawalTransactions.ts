@@ -32,7 +32,7 @@ export function validateReturnDraft(data: TrackerData, input: ReturnMovementInpu
   buildReturns(data, input, at, prefix => `PREVIEW-${input.requestId}-${prefix}-${++counter}`);
 }
 export interface TransactionReceiptModel {
-  reference: string; items: Withdrawal[]; first: Withdrawal; returns: ReturnRecord[]; returnReference?: string;
+  reference: string; items: Withdrawal[]; first: Withdrawal; returns: ReturnRecord[]; returnReference?: string; isBatchReturn?: boolean;
 }
 export function getTransactionReceiptModel(data: TrackerData, withdrawal: Withdrawal, kind: 'withdrawal' | 'return', returnReference?: string): TransactionReceiptModel {
   const items = getWithdrawalItems(data, withdrawal);
@@ -42,11 +42,23 @@ export function getTransactionReceiptModel(data: TrackerData, withdrawal: Withdr
   if (kind === 'withdrawal') return { reference, items, first, returns: [] };
   const events = getTransactionReturns(data, items);
   const selected = returnReference || events.find(r => r.withdrawalId === withdrawal.id)?.reference || events[0]?.reference;
-  const returns = selected ? events.filter(r => r.reference === selected) : [];
-  if (returns.length) return { reference, items, first, returns, returnReference: selected };
+  // Resolve every item in a cross-transaction return, but only when the selected
+  // event actually touches this source transaction. Do not export unrelated events.
+  const returns = selected && events.some(r => r.reference === selected) ? (data.returnRecords || []).filter(r => r.reference === selected) : [];
+  if (returns.length) {
+    const byId = new Map(data.withdrawals.map(w => [w.id, w]));
+    const returnedItems = returns.map(r => {
+      const item = byId.get(r.withdrawalId);
+      if (!item) throw new Error('Return receipt refers to a missing withdrawal.');
+      return item;
+    });
+    const sources = new Set(returnedItems.map(w => w.reference || w.batchId || w.id));
+    if (sources.size > 1) return { reference: selected!, items: returnedItems, first: returnedItems[0], returns, returnReference: selected, isBatchReturn: true };
+    return { reference, items, first, returns, returnReference: selected };
+  }
   if (!returnReference && withdrawal.returnedAt) {
     // Legacy returns retain their actual original timestamp and personnel.
-    return { reference, items, first, returnReference: withdrawal.id, returns: [{ id: `legacy-${withdrawal.id}`, reference: withdrawal.id, withdrawalId: withdrawal.id, assetId: withdrawal.assetId, quantity: withdrawal.returnedQuantity ?? withdrawal.quantity ?? 1, at: withdrawal.returnedAt, returning: withdrawal.returning || '', receiving: withdrawal.receiving || '', condition: withdrawal.condition || '', remarks: withdrawal.remarks || '', ...(withdrawal.returnSignature ? { returnSignature: withdrawal.returnSignature } : {}) }] };
+    return { reference, items, first, returnReference: withdrawal.id, returns: [{ id: `legacy-${withdrawal.id}`, reference: withdrawal.id, withdrawalId: withdrawal.id, assetId: withdrawal.assetId, quantity: withdrawal.returnedQuantity ?? withdrawal.quantity ?? 1, at: withdrawal.returnedAt, returning: withdrawal.returning || '', receiving: withdrawal.receiving || '', condition: withdrawal.condition || '', remarks: withdrawal.remarks || '', ...(withdrawal.returnSignature ? { returnSignature: withdrawal.returnSignature } : {}), ...(withdrawal.receivingSignature ? { receivingSignature: withdrawal.receivingSignature } : {}) }] };
   }
   throw new Error('The selected return event could not be found. No return receipt was generated.');
 }

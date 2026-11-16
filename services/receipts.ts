@@ -6,6 +6,7 @@ import { Asset, Withdrawal, formatDate, manilaParts } from './tracker';
 import { palettes } from '@/constants/theme';
 import type { Signature, TrackerData } from './tracker';
 import { createTransactionReceipt } from './transactionReceipts';
+import { getReturnSignatureDetails } from './returnSignatures';
 
 export type ReceiptKind = 'withdrawal' | 'return';
 export interface ReceiptFile { filename: string; bytes: Uint8Array; base64: string }
@@ -104,8 +105,9 @@ export async function createReceipt(asset: Asset, withdrawal: Withdrawal, kind: 
   drawSignature(kind === 'return' ? 'ORIGINAL WITHDRAWAL SIGNATURE' : 'RECEIVER SIGNATURE', withdrawal.receiver, withdrawal.signature || []);
   if (kind === 'return') {
     field('Original signature', 'Captured at withdrawal; separate from the return signature.');
-    if (withdrawal.returnSignature?.some(stroke => stroke.length > 2)) drawSignature('RETURNING PERSONNEL SIGNATURE', withdrawal.returning || '', withdrawal.returnSignature);
-    else field('Returning personnel signature', 'No returning personnel signature recorded for this historical return.');
+    const details = getReturnSignatureDetails(withdrawal);
+    if (details.signature.some(stroke => stroke.length > 2)) drawSignature(details.label.toUpperCase(), details.person, details.signature);
+    else field(details.label, details.missing);
   }
   const pages = doc.getPages();
   pages.forEach((p, index) => {

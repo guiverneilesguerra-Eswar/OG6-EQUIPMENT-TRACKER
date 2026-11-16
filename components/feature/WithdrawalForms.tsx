@@ -7,21 +7,24 @@ import { DateField } from '@/components/ui/DateField';
 import { NameField } from '@/components/ui/NameField';
 import { SignaturePad } from './SignaturePad';
 import { ReceiptActions } from './ReceiptActions';
+import { ReturnSignatureView } from './ReturnSignatureView';
 import { formatDate } from '@/services/tracker';
 import { radius, type, leading, density } from '@/constants/theme';
 interface Props { model: ReturnType<typeof useWithdrawals> }
 export function WithdrawalForms({ model: m }: Props) {
   const c = m.colors; const w = m.returningWithdrawal; const receipt = m.receiptWithdrawal; const busy = m.busy || m.working;
   const receiptAsset = receipt ? m.asset(receipt.assetId) : undefined;
-  const title = receipt ? 'TRANSACTION & RECEIPTS' : w ? m.returnReviewing ? 'CONFIRM EQUIPMENT RETURN' : 'RETURN EQUIPMENT' : m.reviewing ? 'CONFIRM WITHDRAWAL' : 'NEW EQUIPMENT WITHDRAWAL';
-  return <FormModal visible={m.open || Boolean(w) || Boolean(receipt)} onClose={m.closeDialog} title={title} busyOverride={m.working}>
+  const returningOpen = Boolean(w) || m.batchReturn;
+  const title = receipt ? 'TRANSACTION & RECEIPTS' : returningOpen ? m.returnReviewing ? 'CONFIRM EQUIPMENT RETURN' : m.batchReturn ? 'BATCH RETURN' : 'RETURN EQUIPMENT' : m.reviewing ? 'CONFIRM WITHDRAWAL' : 'NEW EQUIPMENT WITHDRAWAL';
+  return <FormModal visible={m.open || returningOpen || Boolean(receipt)} onClose={m.closeDialog} title={title} busyOverride={m.working}>
     {receipt ? <>
-      <Text selectable style={[styles.label, { color: c.primary }]}>REFERENCE · {receipt.reference || receipt.id}</Text>
-      <Text style={[styles.helper, { color: c.text }]}>Releaser: {receipt.releaser}{'\n'}Receiver: {receipt.receiver}{'\n'}Withdrawn: {formatDate(receipt.withdrawalAt)}{'\n'}Expected return: {formatDate(receipt.dueAt)}{'\n'}Remarks: {receipt.notes || '—'}</Text>
+      <Text selectable style={[styles.label, { color: c.primary }]}>{m.receiptIsBatchReturn ? 'BATCH RETURN' : 'REFERENCE'} · {m.receiptIsBatchReturn ? m.receiptReturnReference : receipt.reference || receipt.id}</Text>
+      {m.receiptIsBatchReturn ? <Text style={[styles.helper, { color: c.subtle }]}>Returned items from multiple withdrawal transactions. Original personnel and dates are shown with each item.</Text> : <Text style={[styles.helper, { color: c.text }]}>Releaser: {receipt.releaser}{'\n'}Receiver: {receipt.receiver}{'\n'}Withdrawn: {formatDate(receipt.withdrawalAt)}{'\n'}Expected return: {formatDate(receipt.dueAt)}{'\n'}Remarks: {receipt.notes || '—'}</Text>}
       <Text style={[styles.section, { color: c.text }]}>{m.receiptItems.length} EQUIPMENT · {m.receiptItems.reduce((sum, item) => sum + (item.quantity ?? 1), 0)} UNITS WITHDRAWN</Text>
       <FlatList scrollEnabled={false} data={m.receiptItems} keyExtractor={item => item.id} renderItem={({ item }) => <View style={[styles.row, { borderColor: c.border, backgroundColor: c.surfaceAlt }]}>
         <Text style={[styles.item, { color: c.text }]}>{item.equipmentSnapshot?.name || m.asset(item.assetId)?.name}</Text>
         <Text selectable style={[styles.helper, { color: c.subtle }]}>Asset ID: {item.assetId}{'\n'}{item.equipmentSnapshot?.serial || m.asset(item.assetId)?.serial}{'\n'}Individual record: {item.id}</Text>
+        {m.receiptIsBatchReturn ? <Text style={[styles.helper, { color: c.text }]}>Source: {item.reference || item.id}{'\n'}Original releaser: {item.releaser} · Receiver: {item.receiver}{'\n'}Withdrawn: {formatDate(item.withdrawalAt)} · Due: {formatDate(item.dueAt)}</Text> : null}
         <Text style={[styles.helper, { color: c.text }]}>{item.quantity ?? 1} withdrawn · {m.remainingQuantity(item)} outstanding</Text>
         <Badge status={item.deletedAt ? 'ARCHIVED' : item.returnedAt ? 'RETURNED' : m.getEquipmentStatus(item.assetId)} />
         {m.receiptKind === 'return' ? <FlatList scrollEnabled={false} data={m.receiptReturns.filter(r => r.withdrawalId === item.id && r.reference === m.receiptReturnReference)} keyExtractor={r => r.id} renderItem={({ item: r }) => <Text style={[styles.helper, { color: c.success }]}>{r.quantity} returned · {formatDate(r.at)}{'\n'}Returning: {r.returning} · Receiving: {r.receiving}{'\n'}{r.condition} · {r.remarks || 'No remarks'}</Text>} /> : null}
@@ -33,35 +36,45 @@ export function WithdrawalForms({ model: m }: Props) {
         <FlatList scrollEnabled={false} data={m.receiptReturnOptions} keyExtractor={r => r.reference} renderItem={({ item: r }) => <Button title={`${m.receiptReturnReference === r.reference ? 'Selected · ' : ''}${r.reference} · ${formatDate(r.at)}`} secondary compact onPress={() => m.setReceiptReturnReference(r.reference)} disabled={busy} />} />
       </> : null}
       {m.receiptKind === 'return' ? <FlatList scrollEnabled={false} data={m.receiptReturnSigners} keyExtractor={event => event.id} renderItem={({ item: event }) => <View>
-        <Text style={[styles.helper, { color: c.text }]}>Returning personnel: {event.returning} · {formatDate(event.at)}</Text>
-        {event.returnSignature?.some(stroke => stroke.length > 2) ? <SignaturePad receiver={event.returning} label="Returning personnel signature" nameLabel="returning personnel" value={event.returnSignature} onChange={() => {}} onSave={() => {}} saved readOnly /> : <Text style={[styles.helper, { color: c.subtle }]}>No returning personnel signature recorded for this historical event.</Text>}
+        <Text style={[styles.helper, { color: c.text }]}>Returning: {event.returning} · Receiving: {event.receiving}{'\n'}{formatDate(event.at)}</Text>
+        <ReturnSignatureView record={event} />
       </View>} /> : null}
       {receiptAsset ? <ReceiptActions key={`${receipt.id}-${m.receiptKind}-${m.receiptReturnReference}`} asset={receiptAsset} withdrawal={receipt} kind={m.receiptKind} returnReference={m.receiptReturnReference || undefined} /> : <ErrorText message="The equipment record for this receipt could not be found." />}
       <Text style={[styles.helper, { color: c.subtle }]}>The complete receipt includes every item under this reference. Each return event records only its returned quantities; other items remain unchanged.</Text>
-    </> : w ? <>
-      <Text selectable style={[styles.label, { color: c.primary }]}>{w.reference || w.id}{'\n'}RETURN · {m.returnRequestId}</Text>
-      <Text style={[styles.helper, { color: c.subtle }]}>Original receiver: {w.receiver} · Due: {formatDate(w.dueAt)}. Enter a whole quantity to return; 0 or blank skips an item.</Text>
-      {!m.returnReviewing ? <Button title="Return all outstanding quantities" secondary onPress={m.selectAllReturns} disabled={busy} /> : null}
-      <FlatList scrollEnabled={false} data={m.returnItems} keyExtractor={item => item.id} ListEmptyComponent={<Empty title="No outstanding equipment" message="" />} renderItem={({ item }) => <View style={[styles.row, { borderColor: c.border }]}>
-        <Text style={[styles.item, { color: c.text }]}>{item.equipmentSnapshot?.name || m.asset(item.assetId)?.name}</Text>
-        <Text selectable style={[styles.helper, { color: c.subtle }]}>{item.assetId} · {item.equipmentSnapshot?.serial || m.asset(item.assetId)?.serial}{'\n'}{m.remainingQuantity(item)} unit(s) outstanding</Text>
-        {!m.returnReviewing ? <Field label="Quantity to return (0 = skip)" value={m.returnQuantities[item.id] || ''} onChangeText={value => m.changeReturnQuantity(item.id, value)} keyboardType="numeric" editable={!busy} /> : <Text style={[styles.helper, { color: c.text }]}>Return now: {m.returnQuantities[item.id] || '0'}</Text>}
-      </View>} />
+    </> : returningOpen ? <>
+      <Text selectable style={[styles.label, { color: c.primary }]}>{m.batchReturn ? 'ALL OUTSTANDING WITHDRAWALS' : w?.reference || w?.id}{'\n'}RETURN · {m.returnRequestId}</Text>
+      <Text style={[styles.helper, { color: c.subtle }]}>{m.batchReturn ? 'Choose any withdrawn equipment across all transactions, including overdue and partially returned items. The main list filter does not restrict this selection.' : `Original receiver: ${w?.receiver || ''} · Due: ${formatDate(w?.dueAt || '')}.`} Enter a whole quantity to return; 0 or blank skips an item.</Text>
+      {!m.returnReviewing ? <>
+        <Field label="Search outstanding equipment" value={m.returnQuery} onChangeText={m.setReturnQuery} placeholder="Equipment, serial, reference, or original receiver" editable={!busy} />
+        <View style={styles.returnActions}><Button title="Return all outstanding quantities" secondary onPress={m.selectAllReturns} disabled={busy || !m.returnItems.length} /><Button title="Clear selection" secondary onPress={m.clearReturnSelection} disabled={busy || !m.returnLines.length} /></View>
+        <Text style={[styles.helper, { color: c.subtle }]}>Select all includes every outstanding item in this form, even items hidden by search.</Text>
+      </> : null}
+      <Text style={[styles.section, { color: c.primary }]}>{m.returnLines.length} ITEMS SELECTED · {m.returnUnits} UNITS TO RETURN</Text>
+      <View style={[styles.returnList, { borderColor: c.border }]}><FlatList style={styles.list} nestedScrollEnabled keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator data={m.visibleReturnItems} keyExtractor={item => item.id} extraData={m.returnQuantities} ListEmptyComponent={<Empty title={m.returnQuery ? 'No matching outstanding equipment' : 'No outstanding equipment'} message="" />} renderItem={({ item }) => {
+        const selected = Boolean(m.returnQuantities[item.id]?.trim()) && Number(m.returnQuantities[item.id]) !== 0;
+        return <View style={[styles.row, { borderColor: selected ? c.borderBright : c.border, backgroundColor: selected ? c.blueBg : c.surfaceAlt }]}>
+          {!m.returnReviewing ? <Pressable accessibilityRole="checkbox" accessibilityLabel={`Return ${item.equipmentSnapshot?.name || m.asset(item.assetId)?.name || item.assetId}, withdrawal ${item.id}`} accessibilityState={{ checked: selected, disabled: busy }} disabled={busy} onPress={() => m.toggleReturnItem(item.id)} style={({ pressed }) => [styles.returnChoice, { opacity: pressed ? 0.65 : 1 }]}><Ionicons name={selected ? 'checkbox-outline' : 'square-outline'} size={24} color={c.primary} /><Text style={[styles.item, styles.equipmentName, { color: c.text }]}>{item.equipmentSnapshot?.name || m.asset(item.assetId)?.name}</Text></Pressable> : <Text style={[styles.item, { color: c.text }]}>{item.equipmentSnapshot?.name || m.asset(item.assetId)?.name}</Text>}
+          <Text selectable style={[styles.helper, { color: c.subtle }]}>{item.assetId} · {item.equipmentSnapshot?.serial || m.asset(item.assetId)?.serial}{'\n'}Source: {item.reference || item.id} · {item.id}{'\n'}Original receiver: {item.receiver} · Due: {formatDate(item.dueAt)}{'\n'}{m.remainingQuantity(item)} unit(s) outstanding</Text>
+          {!m.returnReviewing ? <Field label="Quantity to return (0 = skip)" value={m.returnQuantities[item.id] || ''} onChangeText={value => m.changeReturnQuantity(item.id, value)} keyboardType="numeric" editable={!busy} /> : <Text style={[styles.helper, { color: c.text }]}>Return now: {m.returnQuantities[item.id] || '0'}</Text>}
+        </View>;
+      }} /></View>
       {m.returnReviewing ? <>
         <Text style={[styles.helper, { color: c.text }]}>Returning: {m.returning}{'\n'}Receiving: {m.receiving}{'\n'}Condition: {m.condition}{'\n'}Remarks: {m.remarks || '—'}</Text>
-        <SignaturePad receiver={m.returning} label="Returning personnel signature" nameLabel="returning personnel" value={m.returnSignature} onChange={() => {}} onSave={() => {}} saved readOnly />
+        <SignaturePad receiver={m.receiving} label="Receiving personnel signature" nameLabel="receiving personnel" value={m.receivingSignature} onChange={() => {}} onSave={() => {}} saved readOnly />
         <Text style={[styles.helper, { color: c.subtle }]}>This signature will be saved with this return event and its selected quantities only.</Text>
         <ErrorText message={m.returnError} />
         <Button title="Confirm return" icon="return-down-back-outline" loading={busy} onPress={() => void m.confirmReturn()} />
         <Button title="Back to edit return" secondary disabled={busy} onPress={() => m.setReturnReviewing(false)} />
       </> : <>
         <NameField label="Returning personnel *" role="releasers" value={m.returning} onChangeText={m.setReturning} />
-        <SignaturePad receiver={m.returning} label="Returning personnel signature *" nameLabel="returning personnel" value={m.returnSignature} onChange={m.setReturnSignature} saved={m.returnSignatureSaved} onSave={() => m.setReturnSignatureSaved(true)} disabled={busy} />
         <NameField label="Receiving personnel *" role="receivers" value={m.receiving} onChangeText={m.setReceiving} />
-        <Field label="Equipment condition *" value={m.condition} onChangeText={m.setCondition} placeholder="e.g. Good, complete, operational" editable={!busy} />
+        <SignaturePad receiver={m.receiving} label="Receiving personnel signature *" nameLabel="receiving personnel" value={m.receivingSignature} onChange={m.setReceivingSignature} saved={m.receivingSignatureSaved} onSave={() => m.setReceivingSignatureSaved(true)} disabled={busy} />
+        <Text style={[styles.section, { color: c.text }]}>EQUIPMENT CONDITION *</Text>
+        <View style={styles.returnActions}>{m.equipmentConditions.map(option => <Pressable key={option} accessibilityRole="radio" accessibilityLabel={`Equipment condition: ${option}`} accessibilityState={{ selected: m.condition === option, disabled: busy }} disabled={busy} onPress={() => m.setCondition(option)} style={({ pressed }) => [styles.conditionChoice, { borderColor: m.condition === option ? c.borderBright : c.border, backgroundColor: m.condition === option ? c.action : c.surfaceAlt, opacity: busy ? 0.45 : pressed ? 0.65 : 1 }]}><Text style={[styles.helper, styles.conditionText, { color: m.condition === option ? c.onAction : c.text }]}>{option}</Text></Pressable>)}</View>
+        <Text style={[styles.helper, { color: c.subtle }]}>Selected condition: {m.condition || 'Choose an option'}. Applies to all items in this return; record separate returns for different conditions.</Text>
         <Field label="Remarks" value={m.remarks} onChangeText={m.setRemarks} multiline placeholder="Additional observations" editable={!busy} />
         <ErrorText message={m.returnError} />
-        <Button title="Review return" disabled={busy || !m.returnItems.length} onPress={m.reviewReturn} />
+        <Button title="Review return" disabled={busy || !m.returnLines.length} onPress={m.reviewReturn} />
       </>}
     </> : m.reviewing ? <>
       <Text selectable style={[styles.label, { color: c.primary }]}>REFERENCE · {m.requestId}</Text>
@@ -126,4 +139,4 @@ export function WithdrawalForms({ model: m }: Props) {
     </>}
   </FormModal>;
 }
-const styles = StyleSheet.create({ label: { fontSize: type.meta, fontWeight: '700', lineHeight: leading.small, includeFontPadding: false }, section: { fontSize: type.meta, fontWeight: '700', lineHeight: leading.small, marginTop: density.sectionGap, marginBottom: density.headerGap, includeFontPadding: false }, helper: { fontSize: type.caption, lineHeight: leading.body, marginBottom: density.headerGap, includeFontPadding: false }, equipmentList: { height: 240, borderWidth: 1, borderRadius: radius.md, overflow: 'hidden', marginBottom: density.sectionGap }, list: { flex: 1 }, equipment: { minHeight: 64, flexDirection: 'row', padding: density.cardPadding, borderBottomWidth: 1, alignItems: 'center', gap: density.iconGap }, equipmentName: { flex: 1, minWidth: 1 }, item: { fontSize: type.small, lineHeight: leading.small, includeFontPadding: false, fontWeight: '700', textTransform: 'uppercase' }, row: { borderWidth: 1, borderRadius: radius.md, padding: density.cardPadding, gap: density.headerGap, marginBottom: density.cardGap }, divider: { height: 1, marginVertical: density.sectionGap }, dropdown: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: density.iconGap, borderWidth: 1, borderRadius: radius.sm + 4, padding: density.cardPadding, marginBottom: density.sectionGap }, dropdownText: { flex: 1, minWidth: 1, fontSize: type.body, lineHeight: leading.body, includeFontPadding: false } });
+const styles = StyleSheet.create({ returnActions: { flexDirection: 'row', flexWrap: 'wrap', gap: density.iconGap, marginBottom: density.sectionGap }, returnList: { height: 320, borderWidth: 1, borderRadius: radius.md, overflow: 'hidden', marginBottom: density.sectionGap }, returnChoice: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: density.iconGap }, conditionChoice: { minHeight: 48, borderWidth: 1, borderRadius: radius.sm + 4, paddingHorizontal: density.cardPadding, justifyContent: 'center' }, conditionText: { marginBottom: 0, fontWeight: '600' }, label: { fontSize: type.meta, fontWeight: '700', lineHeight: leading.small, includeFontPadding: false }, section: { fontSize: type.meta, fontWeight: '700', lineHeight: leading.small, marginTop: density.sectionGap, marginBottom: density.headerGap, includeFontPadding: false }, helper: { fontSize: type.caption, lineHeight: leading.body, marginBottom: density.headerGap, includeFontPadding: false }, equipmentList: { height: 240, borderWidth: 1, borderRadius: radius.md, overflow: 'hidden', marginBottom: density.sectionGap }, list: { flex: 1 }, equipment: { minHeight: 64, flexDirection: 'row', padding: density.cardPadding, borderBottomWidth: 1, alignItems: 'center', gap: density.iconGap }, equipmentName: { flex: 1, minWidth: 1 }, item: { fontSize: type.small, lineHeight: leading.small, includeFontPadding: false, fontWeight: '700', textTransform: 'uppercase' }, row: { borderWidth: 1, borderRadius: radius.md, padding: density.cardPadding, gap: density.headerGap, marginBottom: density.cardGap }, divider: { height: 1, marginVertical: density.sectionGap }, dropdown: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: density.iconGap, borderWidth: 1, borderRadius: radius.sm + 4, padding: density.cardPadding, marginBottom: density.sectionGap }, dropdownText: { flex: 1, minWidth: 1, fontSize: type.body, lineHeight: leading.body, includeFontPadding: false } });

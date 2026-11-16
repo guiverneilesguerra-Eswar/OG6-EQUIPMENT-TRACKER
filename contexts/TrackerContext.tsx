@@ -13,7 +13,7 @@ import { BatchInput, BatchRecord, ReturnMovementInput, NameRole, buildBatch, bui
 import { validateDatabase, mergeDatabase, backupSummary } from '@/services/backupValidation';
 import { authorizeMaintenance } from '@/services/maintenanceAuthorization';
 export interface WithdrawalInput { requestId?: string; assetId: string; manual: boolean; name: string; serial: string; manualNotes: string; releaser: string; receiver: string; signature: Signature; withdrawalAt: string; dueAt: string; notes: string }
-export interface ReturnInput { returning: string; receiving: string; condition: string; remarks: string; returnSignature: Signature }
+export interface ReturnInput { returning: string; receiving: string; condition: string; remarks: string; receivingSignature: Signature }
 interface TrackerValue {
   data: TrackerData; now: number; loaded: boolean; error: string; busy: boolean;
   retry: () => Promise<void>;

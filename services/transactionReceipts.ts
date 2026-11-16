@@ -6,7 +6,7 @@ import type { ReceiptFile, ReceiptKind } from './receipts';
 import { getTransactionReceiptModel } from './withdrawalTransactions';
 import { remainingQuantity } from './movements';
 import { palettes } from '@/constants/theme';
-import { returnSignatureEntries } from './returnSignatures';
+import { getReturnSignatureDetails, returnSignatureEntries } from './returnSignatures';
 
 export async function createTransactionReceipt(data: TrackerData, withdrawal: Withdrawal, kind: ReceiptKind, returnReference?: string): Promise<ReceiptFile> {
   const model = getTransactionReceiptModel(data, withdrawal, kind, returnReference);
@@ -29,18 +29,25 @@ export async function createTransactionReceipt(data: TrackerData, withdrawal: Wi
     draw(); if (heading) y -= 6;
   }
   line('OG6 EQUIPMENT TRACKER', true); line(title, true);
-  line(`Transaction reference: ${reference}`);
+  line(`${model.isBatchReturn ? 'Batch return reference' : 'Transaction reference'}: ${reference}`);
   if (model.returnReference) line(`Return reference: ${model.returnReference}`);
-  line(`Releaser: ${first.releaser}`); line(`Receiver: ${first.receiver}`);
-  line(`Withdrawal date & time: ${formatDate(first.withdrawalAt)}`);
-  line(`Recorded at: ${formatDate(first.createdAt)}`); line(`Expected return: ${formatDate(first.dueAt)}`);
-  line(`Remarks: ${first.notes || '-'}`);
+  if (model.isBatchReturn) line('Items from multiple withdrawals. Original personnel and dates are listed per item.');
+  else {
+    line(`Releaser: ${first.releaser}`); line(`Receiver: ${first.receiver}`);
+    line(`Withdrawal date & time: ${formatDate(first.withdrawalAt)}`);
+    line(`Recorded at: ${formatDate(first.createdAt)}`); line(`Expected return: ${formatDate(first.dueAt)}`);
+    line(`Remarks: ${first.notes || '-'}`);
+  }
   line(`Equipment selected: ${items.length} | Total units withdrawn: ${items.reduce((sum, w) => sum + (w.quantity ?? 1), 0)}`);
   line('EQUIPMENT / INDIVIDUAL TRANSACTIONS', true);
   for (const w of items) {
     const a = data.assets.find(a => a.id === w.assetId); const snapshot = w.equipmentSnapshot;
     line(`${snapshot?.name || a?.name || 'Equipment'} | ${snapshot?.serial || a?.serial || '-'}`, true);
     line(`Asset ID: ${w.assetId}`); line(`Individual withdrawal ID: ${w.id}`);
+    if (model.isBatchReturn) {
+      line(`Original transaction: ${w.reference || w.id}`); line(`Releaser: ${w.releaser} | Original receiver: ${w.receiver}`);
+      line(`Withdrawn: ${formatDate(w.withdrawalAt)} | Expected return: ${formatDate(w.dueAt)}`); line(`Original remarks: ${w.notes || '-'}`);
+    }
     line(`Description: ${snapshot?.description || a?.notes || '-'}`);
     line(`Quantity withdrawn: ${w.quantity ?? 1}`);
     if (kind === 'return') {
@@ -61,12 +68,17 @@ export async function createTransactionReceipt(data: TrackerData, withdrawal: Wi
     }
     y -= 120; line(person);
   }
-  drawSignature('RECEIVER SIGNATURE AT WITHDRAWAL', first.receiver, first.signature || []);
+  const signatureSources = model.isBatchReturn ? Array.from(new Map(items.map(w => [w.reference || w.id, w])).values()) : [first];
+  for (const source of signatureSources) {
+    if (model.isBatchReturn) line(`Original signature for transaction: ${source.reference || source.id}`);
+    drawSignature('RECEIVER SIGNATURE AT WITHDRAWAL', source.receiver, source.signature || []);
+  }
   if (kind === 'return') {
     line('Original withdrawal signature; separate from the return signature below.');
     for (const event of returnSignatureEntries(returns)) {
-      if (event.returnSignature?.some(stroke => stroke.length > 2)) drawSignature('RETURNING PERSONNEL SIGNATURE', event.returning, event.returnSignature);
-      else { line('RETURNING PERSONNEL SIGNATURE', true); line(event.returning || '-'); line('No returning personnel signature recorded for this historical event.'); }
+      const details = getReturnSignatureDetails(event);
+      if (details.signature.some(stroke => stroke.length > 2)) drawSignature(details.label.toUpperCase(), details.person, details.signature);
+      else { line(details.label.toUpperCase(), true); line(details.missing); }
       line(`Return reference: ${event.reference} | Signed return event: ${formatDate(event.at)}`);
     }
   }
@@ -85,16 +97,22 @@ export function transactionPrintHtml(data: TrackerData, withdrawal: Withdrawal, 
   const rows = model.items.map(w => {
     const a = data.assets.find(a => a.id === w.assetId);
     const events = model.returns.filter(r => r.withdrawalId === w.id);
-    return `<tr><td><strong>${escape(w.equipmentSnapshot?.name || a?.name || 'Equipment')}</strong><br>${escape(w.equipmentSnapshot?.serial || a?.serial || '-')}<br>Asset ID: ${escape(w.assetId)}<br>${escape(w.equipmentSnapshot?.description || a?.notes || '-')}<br>Withdrawal ID: ${escape(w.id)}</td><td>${w.quantity ?? 1}</td>${kind === 'return' ? `<td>${events.reduce((sum, r) => sum + r.quantity, 0)}<br>${events.map(r => `${escape(formatDate(r.at))}<br>Returning: ${escape(r.returning)}<br>Receiving: ${escape(r.receiving)}<br>${escape(r.condition)}<br>${escape(r.remarks)}`).join('<br>')}<br>Outstanding now: ${remainingQuantity(w)}</td>` : ''}</tr>`;
+    return `<tr><td><strong>${escape(w.equipmentSnapshot?.name || a?.name || 'Equipment')}</strong><br>${escape(w.equipmentSnapshot?.serial || a?.serial || '-')}<br>Asset ID: ${escape(w.assetId)}<br>${escape(w.equipmentSnapshot?.description || a?.notes || '-')}<br>Withdrawal ID: ${escape(w.id)}${model.isBatchReturn ? `<br>Original transaction: ${escape(w.reference || w.id)}<br>Releaser: ${escape(w.releaser)}<br>Original receiver: ${escape(w.receiver)}<br>Withdrawn: ${escape(formatDate(w.withdrawalAt))}<br>Expected return: ${escape(formatDate(w.dueAt))}<br>Original remarks: ${escape(w.notes || '-')}` : ''}</td><td>${w.quantity ?? 1}</td>${kind === 'return' ? `<td>${events.reduce((sum, r) => sum + r.quantity, 0)}<br>${events.map(r => `${escape(formatDate(r.at))}<br>Returning: ${escape(r.returning)}<br>Receiving: ${escape(r.receiving)}<br>${escape(r.condition)}<br>${escape(r.remarks)}`).join('<br>')}<br>Outstanding now: ${remainingQuantity(w)}</td>` : ''}</tr>`;
   }).join('');
-  const strokes = (model.first.signature || []).filter(s => s.length > 1).map(s => `<polyline points="${s.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)).map(p => `${Math.min(500, Math.max(0, p.x))},${Math.min(180, Math.max(0, p.y))}`).join(' ')}" fill="none" stroke="${c.text}" stroke-width="2" />`).join('');
+  const signatureSources = model.isBatchReturn ? Array.from(new Map(model.items.map(w => [w.reference || w.id, w])).values()) : [model.first];
+  const withdrawalSignaturesHtml = signatureSources.map(source => {
+    const strokes = (source.signature || []).filter(s => s.length > 1).map(s => `<polyline points="${s.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)).map(p => `${Math.min(500, Math.max(0, p.x))},${Math.min(180, Math.max(0, p.y))}`).join(' ')}" fill="none" stroke="${c.text}" stroke-width="2" />`).join('');
+    return `<section style="break-inside:avoid"><p>RECEIVER SIGNATURE AT WITHDRAWAL<br>Transaction: ${escape(source.reference || source.id)}</p><svg width="500" height="180" viewBox="0 0 500 180">${strokes}</svg><p>${escape(source.receiver)}<br>Original signature captured at withdrawal.</p></section>`;
+  }).join('');
   const first = model.first;
+  const overviewHtml = model.isBatchReturn ? '<p>Batch return from multiple withdrawal transactions. Original personnel and dates are listed per item.</p>' : `<p>Releaser: ${escape(first.releaser)}<br>Receiver: ${escape(first.receiver)}<br>Withdrawal date &amp; time: ${escape(formatDate(first.withdrawalAt))}<br>Expected return: ${escape(formatDate(first.dueAt))}<br>Remarks: ${escape(first.notes || '-')}</p>`;
   const returnSignatureHtml = kind === 'return' ? returnSignatureEntries(model.returns).map(event => {
-    const signed = event.returnSignature?.some(stroke => stroke.length > 2);
-    const paths = (event.returnSignature || []).filter(stroke => stroke.length > 1).map(stroke => `<polyline points="${stroke.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)).map(p => `${Math.min(500, Math.max(0, p.x))},${Math.min(180, Math.max(0, p.y))}`).join(' ')}" fill="none" stroke="${c.text}" stroke-width="2" />`).join('');
-    return `<section style="break-inside:avoid"><p><strong>RETURNING PERSONNEL SIGNATURE</strong><br>${escape(event.returning || '-')}<br>Return reference: ${escape(event.reference)}<br>Return event: ${escape(formatDate(event.at))}</p>${signed ? `<svg width="500" height="180" viewBox="0 0 500 180">${paths}</svg>` : '<p>No returning personnel signature recorded for this historical event.</p>'}</section>`;
+    const details = getReturnSignatureDetails(event);
+    const signed = details.signature.some(stroke => stroke.length > 2);
+    const paths = details.signature.filter(stroke => stroke.length > 1).map(stroke => `<polyline points="${stroke.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)).map(p => `${Math.min(500, Math.max(0, p.x))},${Math.min(180, Math.max(0, p.y))}`).join(' ')}" fill="none" stroke="${c.text}" stroke-width="2" />`).join('');
+    return `<section style="break-inside:avoid"><p><strong>${escape(details.label.toUpperCase())}</strong><br>${escape(details.person || '-')}<br>Return reference: ${escape(event.reference)}<br>Return event: ${escape(formatDate(event.at))}</p>${signed ? `<svg width="500" height="180" viewBox="0 0 500 180">${paths}</svg>` : `<p>${escape(details.missing)}</p>`}</section>`;
   }).join('') : '';
-  return `<!doctype html><html><head><meta charset="utf-8"><style>body{font:14px Arial;color:${c.text};background:${c.surface};padding:24px}h1{font-size:22px}h2{font-size:18px;color:${c.primary}}p{line-height:1.6}table{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:1px solid ${c.border};padding:8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}th{background:${c.surfaceAlt}}svg{border:1px solid ${c.border};max-width:100%}footer{font-size:11px;margin-top:16px}</style></head><body><h1>OG6 EQUIPMENT TRACKER</h1><h2>${kind === 'return' ? 'EQUIPMENT RETURN RECEIPT' : 'EQUIPMENT WITHDRAWAL RECEIPT'}</h2><p>Transaction reference: ${escape(model.reference)}${model.returnReference ? `<br>Return reference: ${escape(model.returnReference)}` : ''}<br>Releaser: ${escape(first.releaser)}<br>Receiver: ${escape(first.receiver)}<br>Withdrawal date &amp; time: ${escape(formatDate(first.withdrawalAt))}<br>Expected return: ${escape(formatDate(first.dueAt))}<br>Remarks: ${escape(first.notes || '-')}<br>Equipment selected: ${model.items.length} · Total units: ${model.items.reduce((sum, w) => sum + (w.quantity ?? 1), 0)}</p><table><thead><tr><th>Equipment / individual record</th><th>Quantity withdrawn</th>${kind === 'return' ? '<th>This return event</th>' : ''}</tr></thead><tbody>${rows}</tbody></table><p>RECEIVER SIGNATURE AT WITHDRAWAL</p><svg width="500" height="180" viewBox="0 0 500 180">${strokes}</svg><p>${escape(first.receiver)}<br>Original signature captured at withdrawal.</p>${returnSignatureHtml}<footer>Personnel record — share with authorized recipients only.</footer></body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{font:14px Arial;color:${c.text};background:${c.surface};padding:24px}h1{font-size:22px}h2{font-size:18px;color:${c.primary}}p{line-height:1.6}table{border-collapse:collapse;width:100%;table-layout:fixed}td,th{border:1px solid ${c.border};padding:8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}tr{break-inside:avoid}th{background:${c.surfaceAlt}}svg{border:1px solid ${c.border};max-width:100%}footer{font-size:11px;margin-top:16px}</style></head><body><h1>OG6 EQUIPMENT TRACKER</h1><h2>${kind === 'return' ? 'EQUIPMENT RETURN RECEIPT' : 'EQUIPMENT WITHDRAWAL RECEIPT'}</h2>${overviewHtml}<p>${model.isBatchReturn ? 'Batch return reference' : 'Transaction reference'}: ${escape(model.reference)}${model.returnReference ? `<br>Return reference: ${escape(model.returnReference)}` : ''}<br>Equipment selected: ${model.items.length} · Total units: ${model.items.reduce((sum, w) => sum + (w.quantity ?? 1), 0)}</p><table><thead><tr><th>Equipment / individual record</th><th>Quantity withdrawn</th>${kind === 'return' ? '<th>This return event</th>' : ''}</tr></thead><tbody>${rows}</tbody></table>${withdrawalSignaturesHtml}${returnSignatureHtml}<footer>Personnel record — share with authorized recipients only.</footer></body></html>`;
 }
 export async function printTransactionReceipt(data: TrackerData, withdrawal: Withdrawal, kind: ReceiptKind, returnReference?: string): Promise<void> {
   await Print.printAsync({ html: transactionPrintHtml(data, withdrawal, kind, returnReference) });

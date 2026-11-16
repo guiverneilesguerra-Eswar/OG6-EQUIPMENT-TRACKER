@@ -7,6 +7,7 @@ import { Badge, Chips, Empty } from '@/components/ui/Controls';
 import { ReceiptActions } from './ReceiptActions';
 import { ReceiptKind } from '@/services/receipts';
 import { SignaturePad } from './SignaturePad';
+import { ReturnSignatureView } from './ReturnSignatureView';
 import { remainingQuantity } from '@/services/movements';
 import { type, leading, density } from '@/constants/theme';
 
@@ -35,12 +36,12 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
         {w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
         <ReceiptActions key={`${w.id}-${w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'}`} asset={a} withdrawal={w} kind={w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'} />
         {w.returnedAt ? <>{line('Returned at', formatDate(w.returnedAt))}{line('Returning personnel', w.returning)}{line('Receiving personnel', w.receiving)}{line('Return condition', w.condition)}{line('Return remarks', w.remarks)}
-          {!data.returnRecords?.some(r => r.withdrawalId === w.id) ? w.returnSignature?.some(stroke => stroke.length > 2) ? <SignaturePad receiver={w.returning || ''} label="Returning personnel signature" nameLabel="returning personnel" value={w.returnSignature} onChange={() => {}} onSave={() => {}} saved readOnly /> : <Text style={[styles.label, { color: c.subtle }]}>No returning personnel signature recorded for this historical return.</Text> : null}
+          {!data.returnRecords?.some(r => r.withdrawalId === w.id) ? <ReturnSignatureView record={w} /> : null}
         </> : null}
       </> : null}
       {canOperate && data.returnRecords?.some(r => w ? r.withdrawalId === w.id : r.assetId === a?.id) ? <>
         <Text style={[styles.section, { color: c.text }]}>INDIVIDUAL RETURN HISTORY</Text>
-        <FlatList scrollEnabled={false} data={data.returnRecords.filter(r => w ? r.withdrawalId === w.id : r.assetId === a?.id)} keyExtractor={r => r.id} renderItem={({ item: r }) => <View style={[styles.history, { borderColor: c.border }]}><Text selectable style={[styles.value, { color: c.text }]}>{r.reference} · QTY {r.quantity}</Text><Text style={[styles.label, { color: c.subtle }]}>{formatDate(r.at)}</Text><Text style={[styles.value, { color: c.text }]}>Returning: {r.returning} · Receiving: {r.receiving}</Text><Text style={[styles.value, { color: c.text }]}>{r.condition} · {r.remarks || 'No remarks'}</Text>{r.returnSignature?.some(stroke => stroke.length > 2) ? <SignaturePad receiver={r.returning} label="Returning personnel signature" nameLabel="returning personnel" value={r.returnSignature} onChange={() => {}} onSave={() => {}} saved readOnly /> : <Text style={[styles.label, { color: c.subtle }]}>No returning personnel signature recorded for this historical event.</Text>}</View>} />
+        <FlatList scrollEnabled={false} data={data.returnRecords.filter(r => w ? r.withdrawalId === w.id : r.assetId === a?.id)} keyExtractor={r => r.id} renderItem={({ item: r }) => <View style={[styles.history, { borderColor: c.border }]}><Text selectable style={[styles.value, { color: c.text }]}>{r.reference} · QTY {r.quantity}</Text><Text style={[styles.label, { color: c.subtle }]}>{formatDate(r.at)}</Text><Text style={[styles.value, { color: c.text }]}>Returning: {r.returning} · Receiving: {r.receiving}</Text><Text style={[styles.value, { color: c.text }]}>{r.condition} · {r.remarks || 'No remarks'}</Text><ReturnSignatureView record={r} /></View>} />
       </> : null}
       {acknowledgements.length ? <>
         <Text style={[styles.section, { color: c.text }]}>ALARM ACKNOWLEDGEMENT HISTORY</Text>

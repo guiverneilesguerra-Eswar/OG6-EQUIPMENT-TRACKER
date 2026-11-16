@@ -2,6 +2,7 @@
   "imports": {
     "zod": "npm:zod@3.25.76",
     "../services/movements": "../services/movements.ts",
-    "../services/returnSignatures": "../services/returnSignatures.ts"
+    "../services/returnSignatures": "../services/returnSignatures.ts",
+    "../services/returnSelection": "../services/returnSelection.ts"
   }
 }
