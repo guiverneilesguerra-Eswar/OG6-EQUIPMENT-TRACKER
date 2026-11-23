@@ -6,10 +6,10 @@ export interface NameEntry { id: string; name: string; createdAt: string }
 export interface NameDirectory { version: 1; releasers: NameEntry[]; receivers: NameEntry[] }
 export type NameRole = 'releasers' | 'receivers';
 export interface BatchRecord { id: string; reference: string; withdrawalIds: string[]; createdAt: string }
-export interface ReturnRecord { id: string; reference: string; withdrawalId: string; assetId: string; quantity: number; at: string; returning: string; receiving: string; condition: string; remarks: string; returnSignature?: Signature; receivingSignature?: Signature }
+export interface ReturnRecord { id: string; reference: string; withdrawalId: string; assetId: string; quantity: number; at: string; returning: string; receiving: string; condition: string; remarks: string; returnSignature?: Signature; receivingSignature?: Signature; releasingSignature?: Signature }
 export interface BatchLine { assetId: string; manual?: boolean; name?: string; serial?: string; description?: string; quantity: number }
 export interface BatchInput { requestId: string; items: BatchLine[]; releaser: string; receiver: string; signature: Signature; withdrawalAt: string; dueAt: string; remarks: string }
-export interface ReturnMovementInput { requestId: string; items: { withdrawalId: string; quantity: number }[]; returning: string; receiving: string; condition: string; remarks: string; receivingSignature: Signature }
+export interface ReturnMovementInput { requestId: string; items: { withdrawalId: string; quantity: number }[]; returning: string; receiving: string; condition: string; remarks: string; receivingSignature: Signature; releasingSignature?: Signature }
 export const cleanName = (name: string) => name.trim().replace(/\s+/g, ' ');
 export const nameKey = (name: string) => cleanName(name).toLocaleLowerCase();
 export const remainingQuantity = (w: Withdrawal) => w.returnedAt || w.deletedAt ? 0 : (w.quantity ?? 1) - (w.returnedQuantity ?? 0);
@@ -65,7 +65,7 @@ export function buildBatch(data: TrackerData, input: BatchInput, at: string, mak
     seen.add(asset.id);
     if (data.withdrawals.some(w => w.assetId === asset!.id && remainingQuantity(w) > 0)) throw new Error(`${asset.name} is already OUT or overdue. Return it first.`);
     if (line.quantity > assetCapacity(asset)) throw new Error(`${asset.name} has only ${assetCapacity(asset)} unit(s). Serialized legacy equipment has quantity 1.`);
-    const w: Withdrawal = { id: makeId('WD'), assetId: asset.id, batchId: input.requestId, reference, quantity: line.quantity, returnedQuantity: 0, releaser: cleanName(input.releaser), receiver: cleanName(input.receiver), signature: input.signature, withdrawalAt: input.withdrawalAt, dueAt: input.dueAt, notes: input.remarks.trim(), createdAt: at,
+    const w: Withdrawal = { id: makeId('WD'), assetId: asset.id, batchId: input.requestId, reference, quantity: line.quantity, returnedQuantity: 0, releaser: cleanName(input.releaser), receiver: cleanName(input.receiver), signature: copyReturnSignature(input.signature), withdrawalAt: input.withdrawalAt, dueAt: input.dueAt, notes: input.remarks.trim(), createdAt: at,
       equipmentSnapshot: { name: asset.name, serial: asset.serial, description: asset.notes } };
     records.push(w); events.push({ id: makeId('ACT'), assetId: asset.id, transactionId: w.id, type: 'withdrawal', person: w.receiver, at, description: `${reference} · ${line.quantity} unit(s) released` });
   }
@@ -76,6 +76,7 @@ export function buildReturns(data: TrackerData, input: ReturnMovementInput, at: 
   if ((data.returnRecords || []).some(r => r.reference === input.requestId)) return data;
   requireName(input.returning, 'Returning personnel'); requireName(input.receiving, 'Receiving personnel');
   validateReturnSignature(input.receivingSignature); validateEquipmentCondition(input.condition);
+  if (input.releasingSignature !== undefined) validateReturnSignature(input.releasingSignature, 'Releaser');
   if (!Number.isFinite(Date.parse(at)) || input.remarks.length > 10000) throw new Error('Invalid return timestamp or overly long remarks.');
   makeId = uniqueFactory(data, makeId);
   if (!input.requestId || !input.items.length) throw new Error('Select at least one item to return.');
@@ -88,10 +89,10 @@ export function buildReturns(data: TrackerData, input: ReturnMovementInput, at: 
     if (!w || remainingQuantity(w) < line.quantity) throw new Error('Return quantity exceeds the outstanding quantity, or the transaction is no longer active.');
     if (Date.parse(at) < Date.parse(w.withdrawalAt)) throw new Error('Return time cannot precede withdrawal.');
     const total = (w.returnedQuantity ?? 0) + line.quantity; const complete = total === (w.quantity ?? 1);
-    // Preserve an older returning signature, if present, without attributing it to
-    // the receiving person. New acknowledgements use a distinct, copied field.
-    replacements.set(w.id, { ...w, returnedQuantity: total, ...(complete ? { returnedAt: at, alarmAcknowledgedAt: at } : {}), returning: cleanName(input.returning), receiving: cleanName(input.receiving), condition: input.condition, remarks: input.remarks.trim(), receivingSignature: copyReturnSignature(input.receivingSignature) });
-    records.push({ id: makeId('RTN'), reference: input.requestId, withdrawalId: w.id, assetId: w.assetId, quantity: line.quantity, at, returning: cleanName(input.returning), receiving: cleanName(input.receiving), condition: input.condition, remarks: input.remarks.trim(), receivingSignature: copyReturnSignature(input.receivingSignature) });
+    // Historical signatures remain in their original field and immutable events.
+    // An unsigned subsequent releaser cannot inherit someone else's prior ink.
+    replacements.set(w.id, { ...w, returnedQuantity: total, ...(complete ? { returnedAt: at, alarmAcknowledgedAt: at } : {}), returning: cleanName(input.returning), receiving: cleanName(input.receiving), condition: input.condition, remarks: input.remarks.trim(), receivingSignature: copyReturnSignature(input.receivingSignature), releasingSignature: input.releasingSignature ? copyReturnSignature(input.releasingSignature) : undefined });
+    records.push({ id: makeId('RTN'), reference: input.requestId, withdrawalId: w.id, assetId: w.assetId, quantity: line.quantity, at, returning: cleanName(input.returning), receiving: cleanName(input.receiving), condition: input.condition, remarks: input.remarks.trim(), receivingSignature: copyReturnSignature(input.receivingSignature), ...(input.releasingSignature ? { releasingSignature: copyReturnSignature(input.releasingSignature) } : {}) });
     events.push({ id: makeId('ACT'), assetId: w.assetId, transactionId: w.id, type: 'return', person: cleanName(input.returning), at, description: `${input.requestId} · ${line.quantity} returned · ${(w.quantity ?? 1) - total} outstanding` });
   }
   return { ...data, withdrawals: data.withdrawals.map(w => replacements.get(w.id) || w), returnRecords: [...records, ...(data.returnRecords || [])], activities: [...events, ...data.activities], nameDirectory: addNames(getNameDirectory(data), input.returning, input.receiving, at, makeId), notices: data.notices.map(n => n.withdrawalId && replacements.get(n.withdrawalId)?.returnedAt && ['due', 'overdue'].includes(n.type) ? { ...n, acknowledged: true } : n) };
