@@ -12,6 +12,11 @@ import { ArchiveApproval, ArchiveKind, applyArchive, archiveFingerprint, archive
 import { BatchInput, BatchRecord, ReturnMovementInput, NameRole, buildBatch, buildReturns, getNameDirectory, manageName, remainingQuantity } from '@/services/movements';
 import { validateDatabase, mergeDatabase, backupSummary } from '@/services/backupValidation';
 import { authorizeMaintenance } from '@/services/maintenanceAuthorization';
+import { applyDueItemEdit, assertProtectedRestore, dueItemSnapshot, validateDueItemChanges } from '@/services/dueItemEdits';
+import type { DueItemChanges } from '@/services/dueItemEdits';
+import { authorizeDueItem, confirmDueItem } from '@/services/dueItemAuthorization';
+import type { DueEditApproval } from '@/services/dueItemAuthorization';
+import { dueSnapshotKey } from '@/supabase/functions/_shared/dueItemValidation';
 export interface WithdrawalInput { requestId?: string; assetId: string; manual: boolean; name: string; serial: string; manualNotes: string; releaser: string; receiver: string; signature: Signature; withdrawalAt: string; dueAt: string; notes: string }
 export interface ReturnInput { returning: string; receiving: string; condition: string; remarks: string; receivingSignature: Signature; releasingSignature?: Signature }
 interface TrackerValue {
@@ -20,6 +25,8 @@ interface TrackerValue {
   addAsset: (name: string, serial: string, notes: string) => Promise<void>;
   importInventory: (preview: InventoryImportPreview, batchId: string) => Promise<InventoryImportResult>;
   editAsset: (id: string, name: string, serial: string, notes: string, password: string, requestId: string) => Promise<void>;
+  prepareDueItemEdit: (id: string, actor: string, password: string) => Promise<DueEditApproval>;
+  editDueItem: (approval: DueEditApproval, changes: DueItemChanges) => Promise<void>;
   withdraw: (input: WithdrawalInput) => Promise<Withdrawal>;
   withdrawTransaction: (input: BatchInput) => Promise<BatchRecord>;
   returnEquipment: (id: string, input: ReturnInput) => Promise<Withdrawal>;
@@ -53,7 +60,7 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     try {
       const transformed = await transform(current.current);
       if (transformed === current.current) return current.current;
-      const next = { ...transformed, alertKeys: Array.from(new Set([...(transformed.alertKeys || []), ...transformed.notices.filter(n => n.withdrawalId && (n.type === 'due' || n.type === 'overdue')).map(n => `${n.withdrawalId}:${n.type}`)])) };
+      const next = { ...transformed, alertKeys: Array.from(new Set([...(transformed.alertKeys || []), ...transformed.notices.filter(n => n.withdrawalId && (n.type === 'due' || n.type === 'overdue')).map(n => `${n.withdrawalId}:${n.type}${n.dueRevision ? `:revision-${n.dueRevision}` : ''}`)])) };
       // One complete persisted snapshot: no partial batch or in-memory success before durable save.
       await saveData(next); current.current = next; setData(next); setNow(Date.now());
       if (sound && next.settings.enabled) { const channel = soundChannel(sound); if (channel === 'notification' || next.settings.alarmEnabled !== false) void playAlert(sound, channel === 'alarm' ? next.settings.alarmVolume : next.settings.notificationVolume); }
@@ -89,6 +96,25 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
       const approved = await authorizeAssetEdit(original, { name, serial, notes }, password, requestId);
       const at = new Date().toISOString(); const event: Activity = { id: makeId('ACT'), assetId: id, type: 'edit', person: 'Password-authorized local operator', at, description: 'Equipment details updated with server authorization' };
       return { ...d, assets: d.assets.map(asset => asset.id === id ? approved : asset), activities: [event, ...d.activities], notices: [notice('success', 'Equipment updated', 'Equipment details updated successfully.', id), ...d.notices] };
+    }, 'notification');
+  }
+  async function prepareDueItemEdit(id: string, actor: string, password: string): Promise<DueEditApproval> {
+    if (!ready.current || lock.current) throw new Error('Wait for records to load or the current operation to finish.');
+    operator(current.current); const before = dueItemSnapshot(current.current, id);
+    const approval = await authorizeDueItem(before, actor, password);
+    operator(current.current);
+    if (dueSnapshotKey(dueItemSnapshot(current.current, id)) !== dueSnapshotKey(before)) throw new Error('The item changed during authorization. Reopen Edit and verify the password again.');
+    return approval;
+  }
+  async function editDueItem(approval: DueEditApproval, changes: DueItemChanges) {
+    await commit(async d => {
+      operator(d);
+      // A completed retry is a no-op, never a second withdrawal or audit event.
+      if (d.dueItemEdits?.some(e => e.id === approval.id)) return d;
+      const normalized = validateDueItemChanges(d, approval.before, changes);
+      const audit = await confirmDueItem(approval, normalized);
+      const next = applyDueItemEdit(d, audit);
+      return { ...next, notices: [notice('success', 'Due item updated', 'Authorized changes saved; original transaction and edit history retained.', approval.before.assetId, approval.before.withdrawalId), ...next.notices] };
     }, 'notification');
   }
   async function prepareArchive(kind: ArchiveKind, id: string, password: string): Promise<ArchiveApproval> {
@@ -150,6 +176,7 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
       operator(d);
       if (!expectedBefore || JSON.stringify(d) !== expectedBefore) throw new Error('Device records changed after preview. Validate the restoration plan again; no records were changed.');
       const validated = validateDatabase(incoming); const next = mode === 'merge' ? mergeDatabase(d, validated) : validated;
+      assertProtectedRestore(d, next);
       const approval = await authorizeMaintenance('restore', JSON.stringify({ mode, before: d, after: next }), password);
       // This recovery slot is separate from the operational store. Existing audio files are retained.
       await AsyncStorage.setItem('og6.recovery.beforeRestore.v1', JSON.stringify(d));
@@ -177,5 +204,5 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
           : result.notices.map(n => !id || n.id === id ? { ...n, read: true, acknowledged: action === 'acknowledge' || action === 'dismiss' ? true : n.acknowledged } : n) };
     });
   }
-  return <TrackerContext.Provider value={{ data, now, loaded, error, busy, retry, addAsset, importInventory, editAsset, withdraw, withdrawTransaction, returnEquipment, returnItems, prepareArchive, archiveRecord, restoreBackup, manageSavedName, updateSettings, acknowledgeOverdue, updateNotices }}>{children}</TrackerContext.Provider>;
+  return <TrackerContext.Provider value={{ data, now, loaded, error, busy, retry, addAsset, importInventory, editAsset, prepareDueItemEdit, editDueItem, withdraw, withdrawTransaction, returnEquipment, returnItems, prepareArchive, archiveRecord, restoreBackup, manageSavedName, updateSettings, acknowledgeOverdue, updateNotices }}>{children}</TrackerContext.Provider>;
 }

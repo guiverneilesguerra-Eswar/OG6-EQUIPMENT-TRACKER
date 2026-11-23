@@ -8,9 +8,11 @@ import { WithdrawalForms } from '@/components/feature/WithdrawalForms';
 import { ProtectedDeletion } from '@/components/feature/ProtectedDeletion';
 import { RecordDetails } from '@/components/feature/RecordDetails';
 import { useWithdrawals } from '@/hooks/useWithdrawals';
+import { useDueItemEditor } from '@/hooks/useDueItemEditor';
+import { DueItemEditor } from '@/components/feature/DueItemEditor';
 import { spacing, type, leading, radius, density } from '@/constants/theme';
 export default function WithdrawalsPage() {
-  const m = useWithdrawals(); const c = m.colors; const router = useRouter();
+  const m = useWithdrawals(); const c = m.colors; const router = useRouter(); const dueEditor = useDueItemEditor();
   return <>
     <Screen title="WITHDRAWALS & RETURNS" icon="swap-horizontal-outline" action={m.canOperate ? <Button title="New equipment withdrawal" icon="swap-horizontal-outline" onPress={m.beginWithdrawal} disabled={m.busy || !m.loaded || m.working} /> : undefined}>
       <Card>
@@ -18,10 +20,10 @@ export default function WithdrawalsPage() {
         <View style={styles.titleRow}><Ionicons name="swap-horizontal-outline" size={24} color={c.primary} /><Text style={[styles.title, { color: c.text }]}>{m.filter === 'RETURNED' ? 'RETURN HISTORY' : m.filter === 'ALL' ? 'ALL WITHDRAWALS' : m.filter === 'OVERDUE' ? 'OVERDUE EQUIPMENT' : m.filter === 'DUE SOON' ? 'DUE SOON' : 'ACTIVE WITHDRAWALS'}</Text><View style={[styles.countBox, { backgroundColor: c.blueBg, borderColor: c.borderBright }]}><Text style={[styles.count, { color: c.primary }]}>{m.rows.length}</Text></View></View>
         <Field label="Search withdrawals" value={m.query} onChangeText={m.setQuery} placeholder={m.canOperate ? 'Equipment, serial, receiver, or YYYY-MM-DD' : 'Equipment or serial number'} />
         <Chips options={['ACTIVE', 'OVERDUE', 'DUE SOON', 'RETURNED', 'ALL']} selected={m.filter} onSelect={value => { m.setFilter(value); router.setParams({ status: '' }); }} />
-        <FlatList scrollEnabled={false} data={m.rows} keyExtractor={withdrawal => withdrawal.id} ListEmptyComponent={<Empty icon="swap-horizontal-outline" title={m.query ? 'No matching transactions' : m.filter === 'RETURNED' ? 'No returns recorded yet' : 'No transactions in this view'} message="" />} renderItem={({ item }) => <WithdrawalRow withdrawal={item} onView={() => m.setDetail(item)} onReturn={() => m.beginReturn(item)} onDelete={() => m.setDeleting(item)} onReceipt={() => m.showReceipt(item)} />} />
+        <FlatList scrollEnabled={false} data={m.rows} keyExtractor={withdrawal => withdrawal.id} ListEmptyComponent={<Empty icon="swap-horizontal-outline" title={m.query ? 'No matching transactions' : m.filter === 'RETURNED' ? 'No returns recorded yet' : 'No transactions in this view'} message="" />} renderItem={({ item }) => <WithdrawalRow withdrawal={item} onView={() => m.setDetail(item)} onReturn={() => m.beginReturn(item)} onDelete={() => m.setDeleting(item)} onReceipt={() => m.showReceipt(item)} onEdit={() => dueEditor.begin(item)} />} />
       </Card>
     </Screen>
-    {m.canOperate ? <WithdrawalForms model={m} /> : null}
+    {m.canOperate ? <><WithdrawalForms model={m} /><DueItemEditor model={dueEditor} /></> : null}
     <RecordDetails withdrawal={m.detail ? m.data.withdrawals.find(withdrawal => withdrawal.id === m.detail?.id) : null} onClose={() => m.setDetail(null)} />
     <ProtectedDeletion visible={Boolean(m.deleting)} kind="withdrawal" recordId={m.deleting?.id || ''} name={m.deleting ? `${m.asset(m.deleting.assetId)?.name} · ${m.deleting.id}` : ''} activeWithdrawal={Boolean(m.deleting && !m.deleting.returnedAt && !m.deleting.deletedAt)} onClose={() => m.setDeleting(null)} />
   </>;

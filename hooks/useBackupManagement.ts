@@ -5,6 +5,7 @@ import { pickBackupText } from '@/services/portableFiles';
 import { mergeDatabase, backupSummary } from '@/services/backupValidation';
 import { discardUncommittedAlertSound } from '@/services/authorizedAlertSound';
 import { stopSound } from '@/services/audio';
+import { assertProtectedRestore } from '@/services/dueItemEdits';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AuthorizedAlertSound } from '@/services/alertSoundValidation';
 export function useBackupManagement() {
@@ -13,7 +14,7 @@ export function useBackupManagement() {
   async function exportAll() { if (guard.current) return; guard.current = true; setWorking(true); setError(''); setStatus(''); try { if (!tracker.loaded) throw new Error('Wait for all records to load.'); setStatus(await exportBackup(tracker.data)); } catch (e) { setError(e instanceof Error ? e.message : 'Backup export failed.'); } finally { guard.current = false; setWorking(false); } }
   async function importFile() { if (guard.current) return; guard.current = true; setWorking(true); setError(''); setStatus(''); try { const file = await pickBackupText(); if (!file) return; const parsed = await inspectBackup(file.filename, file.text); setPreview(parsed); setMode('merge'); setPassword(''); setConfirmed(false); setPlan(''); } catch (e) { setError(e instanceof Error ? e.message : 'Backup could not be read.'); } finally { guard.current = false; setWorking(false); } }
   const changeMode = useCallback((value: 'full' | 'merge') => { setMode(value); setConfirmed(false); setPlan(''); setError(''); }, []);
-  function reviewPlan() { setError(''); try { if (!preview) return; const next = mode === 'merge' ? mergeDatabase(tracker.data, preview.payload.data) : preview.payload.data; setPlan(backupSummary(next)); setBeforeReview(JSON.stringify(tracker.data)); setConfirmed(true); } catch (e) { setConfirmed(false); setError(e instanceof Error ? e.message : 'Unable to validate restoration plan.'); } }
+  function reviewPlan() { setError(''); try { if (!preview) return; const next = mode === 'merge' ? mergeDatabase(tracker.data, preview.payload.data) : preview.payload.data; assertProtectedRestore(tracker.data, next); setPlan(backupSummary(next)); setBeforeReview(JSON.stringify(tracker.data)); setConfirmed(true); } catch (e) { setConfirmed(false); setError(e instanceof Error ? e.message : 'Unable to validate restoration plan.'); } }
   async function restore() {
     if (!preview || !confirmed || guard.current) return; guard.current = true; setWorking(true); setError(''); setStatus(''); let staged: AuthorizedAlertSound[] = []; let saved = false;
     try {

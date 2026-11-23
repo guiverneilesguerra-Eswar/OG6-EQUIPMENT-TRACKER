@@ -49,8 +49,8 @@ export function parseArchiveRequest(value: unknown) {
     }
     if (points > 15000) throw new RequestError('Signature is too large for secure archival.');
     const withdrawalAt = date(original.withdrawalAt, 'withdrawal date');
-    const dueAt = date(original.dueAt, 'due date');
-    if (Date.parse(dueAt) <= Date.parse(withdrawalAt)) throw new RequestError('Invalid withdrawal dates.');
+    const dueAt = original.dueAt === '' ? '' : date(original.dueAt, 'due date');
+    if (dueAt && Date.parse(dueAt) <= Date.parse(withdrawalAt)) throw new RequestError('Invalid withdrawal dates.');
     const returnedAt = optionalDate(original.returnedAt, 'return date');
     const returning = optionalText(original.returning, 'returning personnel', 200);
     const receiving = optionalText(original.receiving, 'receiving personnel', 200);

@@ -5,6 +5,7 @@ import { normalizeAudioSelections } from './audioConfiguration';
 import type { AuthorizedAlertSound } from './alertSoundValidation';
 import type { AcknowledgementSource } from './alarmAcknowledgements';
 import type { BatchRecord, NameDirectory, ReturnRecord } from './movements';
+import type { DueItemChanges, DueEditAudit } from './dueItemEdits';
 
 export interface Asset { id: string; name: string; serial: string; notes: string; createdAt: string; updatedAt: string; archivedAt?: string; quantity?: number }
 export interface Point { x: number; y: number }
@@ -22,9 +23,12 @@ export interface Withdrawal {
   deletedAt?: string; alarmAcknowledgedAt?: string;
   batchId?: string; reference?: string; quantity?: number; returnedQuantity?: number;
   equipmentSnapshot?: { name: string; serial: string; description: string };
+  /** Original transaction details, retained on first authorized correction. */
+  originalDetails?: DueItemChanges;
+  updatedAt?: string; dueRevision?: number;
 }
 export interface Activity { id: string; assetId: string; transactionId?: string; type: 'added' | 'withdrawal' | 'return' | 'edit' | 'archive' | 'alarm-acknowledgement' | 'maintenance'; person: string; at: string; description: string; authorizationId?: string; withdrawalIds?: string[]; acknowledgementSource?: AcknowledgementSource }
-export interface Notice { id: string; assetId?: string; withdrawalId?: string; type: 'success' | 'due' | 'overdue' | 'error'; priority?: 'critical'; title: string; message: string; at: string; read: boolean; acknowledged: boolean }
+export interface Notice { id: string; assetId?: string; withdrawalId?: string; dueRevision?: number; type: 'success' | 'due' | 'overdue' | 'error'; priority?: 'critical'; title: string; message: string; at: string; read: boolean; acknowledged: boolean }
 export interface Settings {
   theme: 'light' | 'dark' | 'system'; notificationVolume: number; alarmVolume: number;
   alarmEnabled?: boolean; audioPreferencesVersion?: number;
@@ -34,7 +38,7 @@ export interface Settings {
   warningHours: number; role: 'operator' | 'viewer';
 }
 export interface InventoryImportAudit { id: string; filename: string; at: string; importedAssetIds: string[]; duplicatesSkipped: number; invalidRows: number; totalProcessed: number }
-export interface TrackerData { batches?: BatchRecord[]; returnRecords?: ReturnRecord[]; nameDirectory?: NameDirectory; inventoryImports?: InventoryImportAudit[]; version: number; assets: Asset[]; withdrawals: Withdrawal[]; activities: Activity[]; notices: Notice[]; settings: Settings; alertKeys?: string[] }
+export interface TrackerData { dueItemEdits?: DueEditAudit[]; batches?: BatchRecord[]; returnRecords?: ReturnRecord[]; nameDirectory?: NameDirectory; inventoryImports?: InventoryImportAudit[]; version: number; assets: Asset[]; withdrawals: Withdrawal[]; activities: Activity[]; notices: Notice[]; settings: Settings; alertKeys?: string[] }
 const key = 'og6.tracker.v1';
 export const emptyData = (): TrackerData => ({
   version: 1, assets: [], withdrawals: [], activities: [], notices: [],
@@ -60,7 +64,7 @@ export async function loadData(): Promise<TrackerData> {
     await AsyncStorage.setItem(commandAppearanceKey, '1');
   }
   // Preserve legacy acknowledgement decisions independently of later notice clearing.
-  const acknowledged = new Set(parsed.notices.filter((n: Notice) => n.type === 'overdue' && n.acknowledged).map((n: Notice) => n.withdrawalId));
+  const acknowledged = new Set(parsed.notices.filter((n: Notice) => n.type === 'overdue' && n.acknowledged && parsed.withdrawals.some((w: Withdrawal) => w.id === n.withdrawalId && (w.dueRevision || 0) === (n.dueRevision || 0))).map((n: Notice) => n.withdrawalId));
   return {
     ...parsed,
     withdrawals: parsed.withdrawals.map((w: Withdrawal) => acknowledged.has(w.id) && !w.alarmAcknowledgedAt ? { ...w, alarmAcknowledgedAt: new Date().toISOString() } : w),
@@ -94,10 +98,11 @@ export function alerts(data: TrackerData, now: number): Notice[] {
     const remaining = new Date(w.dueAt).getTime() - now;
     const type = remaining < 0 ? 'overdue' : remaining <= data.settings.warningHours * 3600000 ? 'due' : null;
     // Acknowledging directly from the alarm banner can precede notice creation by a few seconds.
-    if (!type || (type === 'overdue' && w.alarmAcknowledgedAt) || data.alertKeys?.includes(`${w.id}:${type}`) || data.notices.some(n => n.withdrawalId === w.id && n.type === type)) return [];
+    const alertKey = `${w.id}:${type}${w.dueRevision ? `:revision-${w.dueRevision}` : ''}`;
+    if (!type || (type === 'overdue' && w.alarmAcknowledgedAt) || data.alertKeys?.includes(alertKey) || data.notices.some(n => n.withdrawalId === w.id && n.type === type && (n.dueRevision || 0) === (w.dueRevision || 0))) return [];
     const name = data.assets.find(a => a.id === w.assetId)?.name || 'Equipment';
-    return [notice(type, type === 'overdue' ? 'Overdue equipment' : 'Equipment return reminder',
-      type === 'overdue' ? `${name} has not been returned. Please coordinate its immediate return.` : `${name} is due on ${formatDate(w.dueAt)}.`, w.assetId, w.id)];
+    return [{ ...notice(type, type === 'overdue' ? 'Overdue equipment' : 'Equipment return reminder',
+      type === 'overdue' ? `${name} has not been returned. Please coordinate its immediate return.` : `${name} is due on ${formatDate(w.dueAt)}.`, w.assetId, w.id), ...(w.dueRevision ? { dueRevision: w.dueRevision } : {}) }];
   });
 }
 export function validateAsset(data: TrackerData, name: string, serial: string, notes: string, editingId?: string) {

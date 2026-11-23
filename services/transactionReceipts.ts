@@ -31,6 +31,7 @@ export function transactionReceiptContent(data: TrackerData, withdrawal: Withdra
       const a = assets.get(w.assetId); const snapshot = w.equipmentSnapshot;
       const equipment = [snapshot?.name || a?.name || 'Equipment', `Serial: ${snapshot?.serial || a?.serial || '-'}`, `Asset ID: ${w.assetId}`, `Withdrawal ID: ${w.id}`, `Description: ${snapshot?.description || a?.notes || '-'}`];
       if (model.isBatchReturn) equipment.push(`Original transaction: ${w.reference || w.id}`, `Releaser: ${w.releaser} | Original receiver: ${w.receiver}`, `Withdrawn: ${formatDate(w.withdrawalAt)}`, `Due: ${formatDate(w.dueAt)} | Recorded: ${formatDate(w.createdAt)}`, `Original remarks: ${w.notes || '-'}`);
+      if (w.originalDetails) equipment.push('AUTHORIZED CORRECTION — original withdrawal details retained:', `Original equipment: ${w.originalDetails.name} | Serial: ${w.originalDetails.serial}`, `Original information: ${w.originalDetails.description || '-'}`, `Original receiver: ${w.originalDetails.receiver} | Releaser: ${w.originalDetails.releaser}`, `Original due date: ${w.originalDetails.dueAt ? formatDate(w.originalDetails.dueAt) : 'No due date'}`, `Original remarks: ${w.originalDetails.notes || '-'}`, `Last corrected: ${formatDate(w.updatedAt || w.createdAt)}`);
       if (w.deletedAt) equipment.push('Subsequently archived; original withdrawal retained.');
       const row = [equipment.join('\n'), String(w.quantity ?? 1)];
       if (kind === 'return') {
@@ -41,8 +42,10 @@ export function transactionReceiptContent(data: TrackerData, withdrawal: Withdra
     }),
   });
   const signatureSources = model.isBatchReturn ? Array.from(new Map(items.map(w => [w.reference || w.id, w])).values()) : [first];
-  const withdrawalSignatures: A4Signature[] = signatureSources.map(source => ({ label: 'RECEIVER SIGNATURE AT WITHDRAWAL', person: source.receiver, signature: source.signature || [], note: `Original transaction: ${source.reference || source.id}` }));
+  const withdrawalSignatures: A4Signature[] = signatureSources.map(source => ({ label: 'RECEIVER SIGNATURE AT WITHDRAWAL', person: source.originalDetails?.receiver || source.receiver, signature: source.signature || [], note: `Original transaction: ${source.reference || source.id}` }));
   blocks.push({ kind: 'signatures', entries: withdrawalSignatures });
+  const edits = data.dueItemEdits?.filter(edit => items.some(w => w.id === edit.before.withdrawalId)) || [];
+  if (edits.length) blocks.push({ kind: 'table', headers: ['Authorized correction', 'Previous due date', 'New due date'], weights: [5, 3, 3], rows: edits.map(edit => [`${edit.before.withdrawalId}\n${edit.id}\n${formatDate(edit.at)}\n${edit.actor} (password-authorized, operator-supplied name)`, edit.before.dueAt ? formatDate(edit.before.dueAt) : 'No due date', edit.approved.dueAt ? formatDate(edit.approved.dueAt) : 'No due date']) });
   if (kind === 'return') {
     blocks.push({ kind: 'text', text: 'Original withdrawal signatures above; separate return acknowledgement below.' });
     const returnSignatures: A4Signature[] = returnSignatureEntries(returns).flatMap(event => getReturnSignatureBlocks(event).map(details => {

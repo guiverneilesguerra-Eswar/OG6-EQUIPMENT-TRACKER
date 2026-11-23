@@ -7,7 +7,7 @@ import { useTracker } from './useTracker';
 export function useReceipt(asset: Asset, withdrawal: Withdrawal, kind: ReceiptKind, returnReference?: string) {
   const { data } = useTracker();
   // Notice polling does not repeatedly rebuild a PDF; only receipt records do.
-  const receiptData = useMemo(() => ({ ...data }), [data.assets, data.withdrawals, data.batches, data.returnRecords]);
+  const receiptData = useMemo(() => ({ ...data }), [data.assets, data.withdrawals, data.batches, data.returnRecords, data.dueItemEdits]);
   const [printing, setPrinting] = useState(false);
   const [file, setFile] = useState<ReceiptFile | null>(null);
   const [preparing, setPreparing] = useState(true);

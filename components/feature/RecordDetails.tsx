@@ -18,6 +18,7 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
   const a = asset || data.assets.find(item => item.id === w?.assetId);
   const history = useMemo(() => asset ? data.withdrawals.filter(item => item.assetId === asset.id) : [], [asset, data.withdrawals]);
   const acknowledgements = useMemo(() => data.activities.filter(event => event.type === 'alarm-acknowledgement' && event.withdrawalIds?.some(id => w ? id === w.id : data.withdrawals.some(record => record.id === id && record.assetId === a?.id))), [data.activities, data.withdrawals, w?.id, a?.id]);
+  const editHistory = data.dueItemEdits?.filter(edit => w ? edit.before.withdrawalId === w.id : edit.before.assetId === a?.id) || [];
   const archiveEvent = data.activities.find(item => item.type === 'archive' && (w ? item.transactionId === w.id : item.assetId === a?.id && !item.transactionId));
   const line = (label: string, value?: string) => value ? <View style={[styles.line, { borderColor: c.border }]}><Text style={[styles.label, { color: c.subtle }]}>{label}</Text><Text selectable style={[styles.value, { color: c.text }]}>{value}</Text></View> : null;
   return <FormModal visible={Boolean(asset || w)} onClose={onClose} title={a?.name || 'Equipment details'} subtitle={a?.serial}>
@@ -28,10 +29,16 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
       {canOperate && (a.archivedAt || w?.deletedAt) ? line('Administrator authorization reference', archiveEvent?.authorizationId) : null}
       {w && canOperate ? <>
         {line('Transaction reference', w.reference || w.id)}{line('Individual withdrawal ID', w.id)}{line('Quantity withdrawn', String(w.quantity ?? 1))}{line('Quantity outstanding', String(remainingQuantity(w)))}{line('Releaser', w.releaser)}{line('Receiver', w.receiver)}
-        {line('Withdrawal date', formatDate(w.withdrawalAt))}{line('Due date', formatDate(w.dueAt))}
+        {line('Withdrawal date', formatDate(w.withdrawalAt))}{line('Due date', w.dueAt ? formatDate(w.dueAt) : 'No due date')}
         {line('Recorded at', formatDate(w.createdAt))}{line('Purpose / notes', w.notes)}
         {w.deletedAt ? line('Withdrawal archived', formatDate(w.deletedAt)) : null}
-        <SignaturePad receiver={w.receiver} value={w.signature} onChange={() => {}} onSave={() => {}} saved readOnly />
+        {w.originalDetails ? <>
+          <Text style={[styles.section, { color: c.text }]}>ORIGINAL WITHDRAWAL DETAILS</Text>
+          {line('Original equipment', `${w.originalDetails.name} · ${w.originalDetails.serial}`)}{line('Original equipment information', w.originalDetails.description)}
+          {line('Original receiver', w.originalDetails.receiver)}{line('Original releaser', w.originalDetails.releaser)}
+          {line('Original due date', w.originalDetails.dueAt ? formatDate(w.originalDetails.dueAt) : 'No due date')}{line('Original remarks', w.originalDetails.notes)}
+        </> : null}
+        <SignaturePad receiver={w.originalDetails?.receiver || w.receiver} label="Original receiver signature at withdrawal" value={w.signature} onChange={() => {}} onSave={() => {}} saved readOnly />
         <Text style={[styles.section, { color: c.text }]}>PDF RECEIPT</Text>
         {w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? <Chips options={['WITHDRAWAL RECEIPT', 'RETURN RECEIPT']} selected={receiptKind === 'return' ? 'RETURN RECEIPT' : 'WITHDRAWAL RECEIPT'} onSelect={value => setReceiptKind(value === 'RETURN RECEIPT' ? 'return' : 'withdrawal')} /> : null}
         <ReceiptActions key={`${w.id}-${w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'}`} asset={a} withdrawal={w} kind={w.returnedAt || data.returnRecords?.some(r => r.withdrawalId === w.id) ? receiptKind : 'withdrawal'} />
@@ -42,6 +49,15 @@ export function RecordDetails({ asset, withdrawal: w, onClose }: DetailProps) {
       {canOperate && data.returnRecords?.some(r => w ? r.withdrawalId === w.id : r.assetId === a?.id) ? <>
         <Text style={[styles.section, { color: c.text }]}>INDIVIDUAL RETURN HISTORY</Text>
         <FlatList scrollEnabled={false} data={data.returnRecords.filter(r => w ? r.withdrawalId === w.id : r.assetId === a?.id)} keyExtractor={r => r.id} renderItem={({ item: r }) => <View style={[styles.history, { borderColor: c.border }]}><Text selectable style={[styles.value, { color: c.text }]}>{r.reference} · QTY {r.quantity}</Text><Text style={[styles.label, { color: c.subtle }]}>{formatDate(r.at)}</Text><Text style={[styles.value, { color: c.text }]}>Returning: {r.returning} · Receiving: {r.receiving}</Text><Text style={[styles.value, { color: c.text }]}>{r.condition} · {r.remarks || 'No remarks'}</Text><ReturnSignatureView record={r} /></View>} />
+      </> : null}
+      {canOperate && editHistory.length ? <>
+        <Text style={[styles.section, { color: c.text }]}>AUTHORIZED DUE ITEM EDIT HISTORY</Text>
+        <FlatList scrollEnabled={false} data={editHistory} keyExtractor={edit => edit.id} renderItem={({ item: edit }) => <View style={[styles.history, { borderColor: c.border }]}>
+          <Text selectable style={[styles.value, { color: c.text }]}>{formatDate(edit.at)}{'\n'}Actual timestamp: {edit.at}</Text>
+          <Text selectable style={[styles.label, { color: c.subtle }]}>Authorization: {edit.id}{'\n'}Withdrawal: {edit.before.withdrawalId}</Text>
+          <Text selectable style={[styles.value, { color: c.text }]}>Authorized by: {edit.actor} (password verified; operator-supplied name){'\n'}Previous due date: {edit.before.dueAt ? formatDate(edit.before.dueAt) : 'No due date'}{'\n'}New due date: {edit.approved.dueAt ? formatDate(edit.approved.dueAt) : 'No due date'}</Text>
+          <Text selectable style={[styles.value, { color: c.text }]}>Receiver: {edit.before.receiver} → {edit.approved.receiver}{'\n'}Releaser: {edit.before.releaser} → {edit.approved.releaser}{'\n'}Equipment: {edit.before.name} → {edit.approved.name}{'\n'}Serial: {edit.before.serial} → {edit.approved.serial}{'\n'}Information: {edit.before.description || '—'} → {edit.approved.description || '—'}{'\n'}Remarks: {edit.before.notes || '—'} → {edit.approved.notes || '—'}</Text>
+        </View>} />
       </> : null}
       {acknowledgements.length ? <>
         <Text style={[styles.section, { color: c.text }]}>ALARM ACKNOWLEDGEMENT HISTORY</Text>

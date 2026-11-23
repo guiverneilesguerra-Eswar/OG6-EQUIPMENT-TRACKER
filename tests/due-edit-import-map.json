@@ -1,0 +1,10 @@
+{
+  "imports": {
+    "zod": "npm:zod@3.25.76",
+    "../services/tracker": "../services/tracker.ts",
+    "../supabase/functions/_shared/dueItemValidation": "../supabase/functions/_shared/dueItemValidation.ts",
+    "../services/movements": "../services/movements.ts",
+    "../services/returnSignatures": "../services/returnSignatures.ts",
+    "../services/returnSelection": "../services/returnSelection.ts"
+  }
+}

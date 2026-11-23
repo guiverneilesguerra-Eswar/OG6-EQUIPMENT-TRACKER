@@ -10,3 +10,7 @@ verify_jwt = false
 # Device-local restore and name management verify the administrator password on every action.
 [functions.og6-authorize-maintenance]
 verify_jwt = false
+
+# Due edits require the shared server-hashed edit password and a short-lived scoped token.
+[functions.og6-authorize-due-item]
+verify_jwt = false

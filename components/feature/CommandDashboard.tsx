@@ -3,6 +3,8 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useDashboard } from '@/hooks/useDashboard';
+import { useDueItemEditor } from '@/hooks/useDueItemEditor';
+import { DueItemEditor } from './DueItemEditor';
 import { useResponsive } from '@/hooks/useResponsive';
 import { DashboardActivity } from '@/services/dashboard';
 import { formatDate } from '@/services/tracker';
@@ -25,31 +27,33 @@ const StatusMetric = memo(function StatusMetric({ title, value, icon, accent, ba
 });
 interface PillProps { status: string; colors: Colors; scale: number; table: boolean }
 const StatusPill = memo(function StatusPill({ status, colors: c, scale, table }: PillProps) {
-  const success = status === 'RETURNED' || status === 'ACKNOWLEDGED';
+  const success = status === 'RETURNED' || status === 'ACKNOWLEDGED' || status === 'UPDATED';
   const color = success ? c.success : status === 'OVERDUE' ? c.danger : status === 'DUE SOON' ? c.warning : c.primary;
   const background = success ? c.successBg : status === 'OVERDUE' ? c.dangerBg : status === 'DUE SOON' ? c.warningBg : c.blueBg;
   return <View style={[styles.statusPill, { minWidth: table ? Math.max(112, 116 * scale) : 86, borderColor: color, backgroundColor: background }]}><Text style={[styles.statusText, { color, fontSize: table ? Math.max(type.micro, consoleType.status * scale) : type.tiny }]}>{status}</Text></View>;
 });
-interface ActivityProps { activity: DashboardActivity; colors: Colors; showPersonnel: boolean; table: boolean; scale: number }
-const ActivityRow = memo(function ActivityRow({ activity: item, colors: c, showPersonnel, table, scale }: ActivityProps) {
+interface ActivityProps { activity: DashboardActivity; colors: Colors; showPersonnel: boolean; table: boolean; scale: number; onEdit?: () => void }
+const ActivityRow = memo(function ActivityRow({ activity: item, colors: c, showPersonnel, table, scale, onEdit }: ActivityProps) {
   const acknowledgement = item.kind === 'ACKNOWLEDGEMENT';
-  const success = item.status === 'RETURNED' || item.status === 'ACKNOWLEDGED';
+  const success = item.status === 'RETURNED' || item.status === 'ACKNOWLEDGED' || item.status === 'UPDATED';
   const color = item.status === 'OVERDUE' ? c.danger : item.status === 'DUE SOON' ? c.warning : success ? c.success : c.primary;
   const background = item.status === 'OVERDUE' ? c.dangerBg : item.status === 'DUE SOON' ? c.warningBg : success ? c.successBg : c.blueBg;
-  const icon: IconName = acknowledgement ? 'volume-mute-outline' : item.kind === 'RETURN' ? 'return-down-back-outline' : item.kind === 'WITHDRAWAL' ? 'swap-horizontal-outline' : item.status === 'OVERDUE' ? 'warning-outline' : 'calendar-outline';
+  const icon: IconName = item.kind === 'EDIT' ? 'create-outline' : acknowledgement ? 'volume-mute-outline' : item.kind === 'RETURN' ? 'return-down-back-outline' : item.kind === 'WITHDRAWAL' ? 'swap-horizontal-outline' : item.status === 'OVERDUE' ? 'warning-outline' : 'calendar-outline';
   return <View style={[styles.activity, !table ? styles.compactActivity : null, { borderColor: c.border, minHeight: Math.max(48, layout.activityHeight * scale), gap: density.iconGap, paddingVertical: density.headerGap }]}>
     <View style={[styles.activityIcon, { backgroundColor: background, width: table ? 52 * scale : 36, height: table ? 52 * scale : 40 }]}><Ionicons name={icon} size={table ? 32 * scale : 22} color={color} /></View>
     {table ? <View style={[styles.kindChip, { width: 112 * scale, backgroundColor: background }]}><Text style={[styles.kindText, { color }]}>{acknowledgement ? 'ALARM ACK' : item.kind}</Text></View> : null}
     <View style={[styles.activityCopy, !table ? styles.compactActivityCopy : null]}>
       {!table ? <Text style={[styles.activityKind, { color }]}>{item.kind}</Text> : null}
       <Text numberOfLines={table ? 1 : 2} style={[styles.activityName, { color: c.text, fontSize: Math.max(type.small, consoleType.activity * scale) }]}>{item.name}</Text>
-      {showPersonnel ? <Text numberOfLines={1} style={[styles.activityPerson, { color: c.subtle }]}>{acknowledgement ? 'Workspace' : item.kind === 'RETURN' ? 'Returned by' : 'Receiver'}: {item.person}</Text> : null}
+      {showPersonnel ? <Text numberOfLines={1} style={[styles.activityPerson, { color: c.subtle }]}>{item.kind === 'EDIT' ? 'Authorized by' : acknowledgement ? 'Workspace' : item.kind === 'RETURN' ? 'Returned by' : 'Receiver'}: {item.person}</Text> : null}
+      {showPersonnel && item.description ? <Text selectable style={[styles.activityDate, { color: c.subtle }]}>{item.description}</Text> : null}
       {item.withdrawalIds?.length ? <Text selectable style={[styles.activityDate, { color: c.subtle }]}>WITHDRAWAL IDS: {item.withdrawalIds.join(', ')}</Text> : null}
       {acknowledgement ? <Text selectable style={[styles.activityDate, { color: c.subtle }]}>{item.at}</Text> : null}
       {!table ? <Text style={[styles.activityDate, { color: c.subtle }]}>{item.kind === 'DUE ITEM' ? 'Due: ' : ''}{formatDate(item.at)}</Text> : null}
     </View>
     {table ? <View style={[styles.tableDate, { width: 230 * scale }]}><Ionicons name="calendar-outline" size={20} color={c.subtle} /><Text style={[styles.tableDateText, { color: c.subtle }]}>{item.kind === 'DUE ITEM' ? 'Due: ' : ''}{formatDate(item.at)}</Text></View> : null}
     <StatusPill status={item.status} colors={c} scale={scale} table={table} />
+    {item.kind === 'DUE ITEM' && onEdit ? <Button title="Edit" icon="create-outline" secondary compact onPress={onEdit} /> : null}
   </View>;
 });
 interface MonitorProps { overdue?: boolean; count: number; hours: number; colors: Colors; scale: number; compact: boolean; onView: () => void; onSilence?: () => void; silenced: boolean; busy: boolean }
@@ -71,7 +75,7 @@ const MonitoringPanel = memo(function MonitoringPanel({ overdue = false, count, 
 });
 interface DashboardProps {}
 export function CommandDashboard(_props: DashboardProps) {
-  const m = useDashboard(); const c = m.colors;
+  const m = useDashboard(); const c = m.colors; const dueEditor = useDueItemEditor();
   const { consoleScale: scale, dashboardRail: rail, fourMetrics, tableActivities: table } = useResponsive();
   const silenced = m.alarmsSilenced;
   return <>
@@ -88,7 +92,7 @@ export function CommandDashboard(_props: DashboardProps) {
     <View style={[styles.lower, { marginTop: density.cardGap, gap: density.cardGap }, rail ? styles.lowerWide : null]}>
       <Card style={[styles.activitiesCard, { padding: density.cardPadding }, rail ? styles.activityRail : null]}>
         <View style={[styles.sectionHeader, { marginBottom: density.headerGap }]}><View style={styles.headingGroup}><Ionicons name="time-outline" size={30 * scale} color={c.headerText} /><Text style={[styles.sectionTitle, { color: c.text, fontSize: Math.max(type.label, consoleType.section * scale) }]}>RECENT ACTIVITIES</Text></View><Pressable accessibilityRole="button" accessibilityLabel={m.expanded ? 'Show recent activities' : 'View all activities'} onPress={m.toggleActivities} style={({ pressed }) => [styles.viewAll, { opacity: pressed ? 0.6 : 1 }]}><Text style={[styles.viewAllText, { color: c.primary }]}>{m.expanded ? 'SHOW LESS' : table ? 'VIEW ALL ACTIVITIES' : 'VIEW ALL'}</Text><Ionicons name="arrow-forward-outline" size={22} color={c.primary} /></Pressable></View>
-        <FlatList data={m.expanded ? m.activities : m.activities.slice(0, 4)} scrollEnabled={false} keyExtractor={item => item.id} ListEmptyComponent={<Empty icon="pulse-outline" title="No equipment movements yet" message="" />} renderItem={({ item }) => <ActivityRow activity={item} colors={c} showPersonnel={m.canOperate} table={table} scale={scale} />} />
+        <FlatList data={m.expanded ? m.activities : m.activities.slice(0, 4)} scrollEnabled={false} keyExtractor={item => item.id} ListEmptyComponent={<Empty icon="pulse-outline" title="No equipment movements yet" message="" />} renderItem={({ item }) => <ActivityRow activity={item} colors={c} showPersonnel={m.canOperate} table={table} scale={scale} onEdit={m.canOperate && !m.busy ? () => { const record = m.data.withdrawals.find(w => w.id === item.withdrawalId); if (record) dueEditor.begin(record); } : undefined} />} />
         {m.assets.length === 0 && m.canOperate ? <Button title="Register first equipment" secondary icon="add-outline" onPress={m.viewInventory} /> : null}
       </Card>
       <View style={[styles.monitors, { gap: density.cardGap }, rail ? { width: `${layout.railFraction * 100}%` } : null]}>
@@ -96,6 +100,7 @@ export function CommandDashboard(_props: DashboardProps) {
         <MonitoringPanel count={m.dueSoon} hours={m.data.settings.warningHours} colors={c} scale={scale} compact={!table} onView={m.viewDueSoon} silenced={false} busy={m.busy} />
       </View>
     </View>
+    {m.canOperate ? <DueItemEditor model={dueEditor} /> : null}
   </>;
 }
 const styles = StyleSheet.create({

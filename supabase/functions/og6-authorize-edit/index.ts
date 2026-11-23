@@ -2,23 +2,10 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 import { parseEditRequest, RequestError } from './validation.ts';
 
+import { verifyEditPassword } from '../_shared/editCredential.ts';
+
 const encoder = new TextEncoder();
-const secret = Deno.env.get('OG6_EDIT_PASSWORD');
-const salt = crypto.getRandomValues(new Uint8Array(32));
-async function derive(value: string) {
-  const key = await crypto.subtle.importKey('raw', encoder.encode(value), 'PBKDF2', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, key, 256);
-  return new Uint8Array(bits);
-}
-// Only the server derives and compares the credential; no password/hash is stored in audit records.
-const expected = secret ? derive(secret) : null;
-async function matches(candidate: string) {
-  if (!expected) return false;
-  const [known, supplied] = await Promise.all([expected, derive(candidate)]);
-  let difference = 0;
-  for (let i = 0; i < known.length; i += 1) difference |= known[i] ^ supplied[i];
-  return difference === 0;
-}
+/* Credential derivation and constant-time comparison are shared with due-item edits. */
 async function bucketFor(request: Request) {
   // Use gateway forwarding information, never a caller-supplied installation ID, for throttling.
   const address = (request.headers.get('x-forwarded-for')?.split(',').at(-1)
@@ -34,10 +21,6 @@ function response(status: number, body: object, extra: Record<string, string> = 
 Deno.serve(async request => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
   if (request.method !== 'POST') return response(405, { error: 'Use POST to authorize an equipment edit.' });
-  if (!expected) {
-    console.error('OG6 edit authorization: server credential is not configured.');
-    return response(503, { error: 'Equipment edit authorization is not configured. Contact the administrator.' });
-  }
   try {
     if (Number(request.headers.get('content-length') || 0) > 128000) return response(413, { error: 'The edit request is too large.' });
     const raw = await request.text();
@@ -55,7 +38,7 @@ Deno.serve(async request => {
       return response(503, { error: 'Authorization is temporarily unavailable. No local records were changed.' });
     }
     if (!admitted) return response(429, { error: 'Too many incorrect or simultaneous edit attempts. Wait 15 minutes and try again.' }, { 'Retry-After': '900' });
-    if (!await matches(input.password)) return response(403, { error: 'Edit authorization failed. Check the password and try again.' });
+    if (!await verifyEditPassword(admin, input.password)) return response(403, { error: 'Edit authorization failed. Check the password and try again.' });
     const approved = { ...input.before, ...input.changes, updatedAt: new Date().toISOString() };
     const { data, error } = await admin.rpc('og6_record_edit_authorization', {
       p_request_id: input.requestId, p_installation_id: input.installationId,
