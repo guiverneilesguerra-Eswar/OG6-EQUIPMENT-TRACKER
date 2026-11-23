@@ -2,7 +2,7 @@ import { buildBatch, buildReturns, remainingQuantity } from '../services/movemen
 import type { ReturnMovementInput } from '../services/movements.ts';
 import { validateDatabase, mergeDatabase } from '../services/backupValidation.ts';
 import { getTransactionReceiptModel, validateReturnDraft } from '../services/withdrawalTransactions.ts';
-import { getReturnSignatureDetails, returnSignatureEntries, validateReturnSignature } from '../services/returnSignatures.ts';
+import { getReturnSignatureBlocks, getReturnSignatureDetails, returnSignatureEntries, validateReturnSignature } from '../services/returnSignatures.ts';
 import type { Signature, TrackerData } from '../services/tracker.ts';
 const at = '2026-11-16T08:00:00.000Z'; const returnedAt = '2026-11-16T09:00:00.000Z';
 let counter = 0; const makeId = (prefix: string) => `${prefix}-${++counter}`;
@@ -48,6 +48,28 @@ Deno.test('multi-item returns export one receiving signer entry and backup round
   const next = buildReturns(original, input, returnedAt, makeId);
   equal(next.returnRecords?.length, 2); equal(returnSignatureEntries(next.returnRecords || []).length, 1); equal(next.withdrawals.map(remainingQuantity), [0, 0]);
   const restored = validateDatabase(JSON.parse(JSON.stringify(next))); equal(restored.withdrawals, next.withdrawals); equal(restored.returnRecords, next.returnRecords); equal(mergeDatabase(restored, restored).returnRecords?.length, 2);
+});
+Deno.test('original withdrawal ink is independently copied to every saved equipment record', () => {
+  const base = fixture(); const captured = sign(); const input = { requestId: 'TX-copy', items: [{ assetId: 'radio', quantity: 1 }, { assetId: 'lot', quantity: 4 }], releaser: 'John', receiver: 'Jane', signature: captured, withdrawalAt: at, dueAt: '2026-11-17T08:00:00.000Z', remarks: '' };
+  const original = { ...base, withdrawals: [], batches: [], activities: [] };
+  const result = buildBatch(original, input, at, makeId).next;
+  captured[0][0].x = 499;
+  equal(result.withdrawals.map(w => w.signature), [sign(), sign()]);
+  result.withdrawals[0].signature[0][0].x = 400; equal(result.withdrawals[1].signature, sign());
+});
+Deno.test('receiving and releaser return ink survives persistence, old-event reopening and backup merge separately', () => {
+  const original = fixture(); const input = { ...form(original), releasingSignature: sign(25) };
+  const first = buildReturns(original, input, returnedAt, makeId);
+  input.releasingSignature[0][0].x = 499; input.receivingSignature[0][0].x = 498;
+  equal(first.returnRecords![0].receivingSignature, sign()); equal(first.returnRecords![0].releasingSignature, sign(25));
+  const second = buildReturns(first, { ...form(first, 'RET-next'), receivingSignature: sign(10), releasingSignature: sign(30) }, '2026-11-16T10:00:00.000Z', makeId);
+  const restored = validateDatabase(JSON.parse(JSON.stringify(second)));
+  const selected = getTransactionReceiptModel(restored, restored.withdrawals.find(w => w.assetId === 'lot')!, 'return', 'RET-signed');
+  const blocks = getReturnSignatureBlocks(selected.returns[0]);
+  equal(blocks.map(b => b.person), ['John', 'Jane']); equal(blocks.map(b => b.signature), [sign(), sign(25)]);
+  equal(blocks.map(b => b.label), ['Receiving personnel signature', 'Releaser signature at return']);
+  equal(mergeDatabase(restored, restored).returnRecords, restored.returnRecords);
+  rejects(() => buildReturns(original, { ...form(original, 'RET-bad'), releasingSignature: [[{ x: 1, y: 1 }]] }, returnedAt, makeId));
 });
 Deno.test('legacy returning signatures retain their original role, condition, strokes and timestamp', () => {
   const original = fixture(); const data = buildReturns(original, form(original), returnedAt, makeId);

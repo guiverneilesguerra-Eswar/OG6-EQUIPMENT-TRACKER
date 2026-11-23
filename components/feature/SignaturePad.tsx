@@ -1,9 +1,10 @@
 import { memo } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import type { Signature } from '@/services/tracker';
+import { signatureInkWidth, signaturePath } from '@/services/signatureCanvas';
 import { useTracker } from '@/hooks/useTracker';
 import { useSignatureCanvas } from '@/hooks/useSignatureCanvas';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -13,31 +14,33 @@ interface Props {
   receiver: string; value: Signature; onChange: (value: Signature) => void;
   saved: boolean; onSave: () => void; readOnly?: boolean;
   label?: string; nameLabel?: string; disabled?: boolean; expandable?: boolean;
+  onInteractionChange?: (locked: boolean) => void;
 }
-export const SignaturePad = memo(function SignaturePad({ receiver, value, onChange, saved, onSave, readOnly = false, label = 'Receiver’s signature', nameLabel = 'receiver', disabled = false, expandable = false }: Props) {
+export const SignaturePad = memo(function SignaturePad({ receiver, value, onChange, saved, onSave, readOnly = false, label = 'Receiver’s signature', nameLabel = 'receiver', disabled = false, expandable = false, onInteractionChange }: Props) {
   const { colors: c } = useTracker(); const unlocked = Boolean(receiver.trim()) && !disabled;
   const responsive = useResponsive(); const compactExpanded = responsive.height < 450;
-  const m = useSignatureCanvas({ value, onChange, unlocked, readOnly, disabled });
-  const canvas = (large: boolean) => <View accessibilityLabel={`${label} for ${receiver || nameLabel}`} onLayout={e => m.measure(e.nativeEvent.layout.width, e.nativeEvent.layout.height)} {...(!readOnly ? m.responder.panHandlers : {})} style={[styles.pad, large ? styles.largePad : styles.compactPad, { backgroundColor: c.surfaceAlt, borderColor: saved ? c.success : unlocked ? c.borderBright : c.border }]}>
-    <Svg pointerEvents="none" width="100%" height="100%" viewBox="0 0 500 180" preserveAspectRatio="none">{m.shown.map((stroke, i) => <Path key={i} d={stroke.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)).map((p, j) => `${j ? 'L' : 'M'}${p.x},${p.y}`).join(' ')} stroke={c.text} strokeWidth={2.4} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}</Svg>
+  const m = useSignatureCanvas({ value, onChange, unlocked, readOnly, disabled, onInteractionChange });
+  const blocked = !unlocked || m.isDrawing;
+  const canvas = (large: boolean) => <View ref={m.surface} collapsable={false} accessibilityLabel={`${label} for ${receiver || nameLabel}`} onLayout={e => m.measure(e.nativeEvent.layout.width, e.nativeEvent.layout.height)} {...(!readOnly && Platform.OS !== 'web' ? m.responder.panHandlers : {})} style={[styles.pad, large ? styles.largePad : styles.compactPad, { backgroundColor: c.surfaceAlt, borderColor: saved ? c.success : unlocked ? c.borderBright : c.border }]}>
+    <Svg pointerEvents="none" width="100%" height="100%" viewBox="0 0 500 180" preserveAspectRatio="xMidYMid meet">{m.shown.map((stroke, i) => <Path key={i} d={signaturePath(stroke)} stroke={c.text} strokeWidth={signatureInkWidth} fill="none" strokeLinecap="round" strokeLinejoin="round" />)}</Svg>
     <View pointerEvents="none" style={[styles.baseline, { borderColor: c.border }]} />
-    {!unlocked && !readOnly ? <View style={[styles.locked, { backgroundColor: c.surfaceAlt }]}><Ionicons name="lock-closed-outline" color={c.subtle} size={24} /><Text style={[styles.lockText, { color: c.subtle }]}>{disabled ? 'Signature controls are disabled while saving.' : `Please enter the ${nameLabel} name to unlock the signature field.`}</Text></View> : !m.shown.length ? <View pointerEvents="none" style={styles.hint}><Ionicons name="pencil-outline" size={20} color={c.subtle} /><Text style={[styles.hintText, { color: c.subtle }]}>{readOnly ? 'No signature recorded for this historical event.' : 'Sign here using your finger, pen, or mouse'}</Text></View> : null}
+    {!unlocked && !readOnly ? <View pointerEvents="none" style={[styles.locked, { backgroundColor: c.surfaceAlt }]}><Ionicons name="lock-closed-outline" color={c.subtle} size={24} /><Text style={[styles.lockText, { color: c.subtle }]}>{disabled ? 'Signature controls are disabled while saving.' : `Please enter the ${nameLabel} name to unlock the signature field.`}</Text></View> : !m.shown.length ? <View pointerEvents="none" style={styles.hint}><Ionicons name="pencil-outline" size={20} color={c.subtle} /><Text style={[styles.hintText, { color: c.subtle }]}>{readOnly ? 'No signature recorded for this historical event.' : 'Sign here using your finger, pen, or mouse'}</Text></View> : null}
   </View>;
-  const controls = () => !readOnly ? <View style={styles.controls}>
-    <Button title="Clear signature" secondary compact disabled={!unlocked} onPress={m.clear} />
-    <Button title={saved ? 'Signature saved' : 'Save signature'} icon={saved ? 'checkmark-outline' : 'save-outline'} secondary compact disabled={!unlocked || !value.some(s => s.length > 2)} onPress={onSave} />
+  const controls = (large: boolean) => !readOnly ? <View style={styles.controls}>
+    <Button title="Clear signature" secondary compact disabled={blocked} onPress={m.clear} />
+    {large ? <Button title="Cancel" secondary compact disabled={disabled || m.isDrawing} onPress={m.toggleExpanded} /> : null}
+    <Button title={saved ? 'Signature saved' : 'Save signature'} icon={saved ? 'checkmark-outline' : 'save-outline'} secondary compact disabled={blocked || !m.shown.some(s => s.length > 2)} onPress={() => m.save(onSave)} />
   </View> : null;
   return <View style={styles.container}>
-    <View style={styles.labelRow}><Text style={[styles.label, styles.labelFlex, { color: c.text }]}>{label}</Text>{expandable && !readOnly ? <Pressable accessibilityRole="button" accessibilityLabel="Expand receiving personnel signature canvas" accessibilityState={{ expanded: m.expanded, disabled }} disabled={disabled} onPress={m.toggleExpanded} style={({ pressed }) => [styles.expand, { backgroundColor: c.surfaceAlt, opacity: disabled ? 0.45 : pressed ? 0.65 : 1 }]}><Ionicons name="expand-outline" size={20} color={c.primary} /><Text style={[styles.expandText, { color: c.primary }]}>Expand</Text></Pressable> : null}</View>
-    {!m.expanded ? <>{canvas(false)}{controls()}</> : null}
+    <View style={styles.labelRow}><Text style={[styles.label, styles.labelFlex, { color: c.text }]}>{label}</Text>{expandable && !readOnly ? <Pressable accessibilityRole="button" accessibilityLabel={`Expand ${label.toLowerCase()} canvas`} accessibilityState={{ expanded: m.expanded, disabled: disabled || m.isDrawing }} disabled={disabled || m.isDrawing} onPress={m.toggleExpanded} style={({ pressed }) => [styles.expand, { backgroundColor: c.surfaceAlt, opacity: disabled ? 0.45 : pressed ? 0.65 : 1 }]}><Ionicons name="expand-outline" size={20} color={c.primary} /><Text style={[styles.expandText, { color: c.primary }]}>Expand</Text></Pressable> : null}</View>
+    {!m.expanded ? <>{canvas(false)}{controls(false)}</> : null}
     {expandable ? <Modal visible={m.expanded} animationType="fade" presentationStyle="fullScreen" onRequestClose={m.toggleExpanded}>
       <SafeAreaView style={[styles.fullScreen, { backgroundColor: c.surface }]} edges={['top', 'bottom', 'left', 'right']}>
         {m.expanded ? <View style={[styles.expandedContent, compactExpanded ? styles.shortContent : null]}>
-          <View style={styles.expandedHeader}><View style={styles.labelFlex}><Text style={[compactExpanded ? styles.shortTitle : styles.title, { color: c.text }]}>RECEIVING SIGNATURE</Text><Text numberOfLines={1} style={[styles.hintText, { color: saved ? c.success : c.subtle }]}>{saved ? 'Saved · ' : ''}{receiver || 'Enter receiving personnel in the return form'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Return to compact signature canvas" disabled={disabled} onPress={m.toggleExpanded} style={({ pressed }) => [styles.close, { backgroundColor: c.surfaceAlt, opacity: disabled ? 0.45 : pressed ? 0.65 : 1 }]}><Ionicons name="contract-outline" size={24} color={c.primary} /></Pressable></View>
-          {!compactExpanded ? <Text accessibilityLiveRegion="polite" style={[styles.state, { color: saved ? c.success : c.subtle }]}>{saved ? 'Signature saved' : 'Save the signature after signing.'} Switching views keeps your ink and save state.</Text> : null}
+          <View style={styles.expandedHeader}><View style={styles.labelFlex}><Text style={[compactExpanded ? styles.shortTitle : styles.title, { color: c.text }]}>{label.toUpperCase().replace(' *', '')}</Text><Text numberOfLines={1} style={[styles.hintText, { color: saved ? c.success : c.subtle }]}>{saved ? 'Saved · ' : ''}{receiver || `Enter the ${nameLabel} name in the form`}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Return to compact signature canvas" disabled={disabled || m.isDrawing} onPress={m.toggleExpanded} style={({ pressed }) => [styles.close, { backgroundColor: c.surfaceAlt, opacity: disabled ? 0.45 : pressed ? 0.65 : 1 }]}><Ionicons name="contract-outline" size={24} color={c.primary} /></Pressable></View>
+          {!compactExpanded ? <Text accessibilityLiveRegion="polite" style={[styles.state, { color: saved ? c.success : c.subtle }]}>{saved ? 'Signature saved.' : 'Lift and continue signing as needed, then save.'} Cancel returns without clearing ink; only Clear erases it.</Text> : null}
           {canvas(true)}
-          {controls()}
-          {!compactExpanded ? <Button title="Back to return form" secondary icon="contract-outline" disabled={disabled} onPress={m.toggleExpanded} /> : null}
+          {controls(true)}
         </View> : null}
       </SafeAreaView>
     </Modal> : null}

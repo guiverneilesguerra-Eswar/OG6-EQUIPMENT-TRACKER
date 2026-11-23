@@ -7,14 +7,14 @@ Deno.test('unified return form captures receiving personnel signature and fixed 
   check(form.includes('receiver={m.receiving}') && form.includes('value={m.receivingSignature} onChange={m.setReceivingSignature}') && form.includes('saved={m.receivingSignatureSaved}'), 'Receiving personnel must sign and save');
   check(form.includes('value={m.receivingSignature} onChange={() => {}} onSave={() => {}} saved readOnly'), 'Review signature is read-only');
   check(hook.includes('if (!receivingSignatureSaved) throw new Error'), 'Unsaved signature blocks submission');
-  check(hook.includes('setReceivingValue(value); setReceivingSignatureValue([]); setReceivingSignatureSaved(false)'), 'Changing receiving person invalidates signature');
+  check(hook.includes('if (current !== value) setReceivingSignatureSaved(false)') && !hook.includes('setReceivingValue(value); setReceivingSignatureValue([])'), 'Changing the receiving person invalidates saved state without silently erasing ink');
   check(hook.includes('setReceivingSignatureValue(value); setReceivingSignatureSaved(false)'), 'Editing signature invalidates save');
   check(selection.includes("['Serviceable', 'Unserviceable', 'Damage']") && form.includes('accessibilityRole="radio"'), 'Exact condition choices');
   check(!form.includes('placeholder="e.g. Good'), 'No free-text condition input');
 });
 Deno.test('PDF and history resolve actual signature role without relabeling legacy strokes', async () => {
   const [pdf, fallback, history, resolver] = await Promise.all([source('../services/transactionReceipts.ts'), source('../services/receipts.ts'), source('../components/feature/RecordDetails.tsx'), source('../services/returnSignatures.ts')]);
-  check(pdf.includes('getReturnSignatureDetails(event)') && pdf.includes('person: details.person, signature: details.signature'), 'PDF uses selected event signer');
+  check(pdf.includes('getReturnSignatureBlocks(event)') && pdf.includes('person: details.person, signature: details.signature'), 'PDF uses selected event signer');
   check(pdf.includes('label: details.label.toUpperCase()') && pdf.includes('createSingleA4Document(content.title, content.blocks)'), 'PDF and print use actual signer label in shared one-sheet layout');
   check(fallback.includes('return createTransactionReceipt(localSnapshot, withdrawal, kind)'), 'Fallback PDF uses the shared role-aware renderer');
   check(history.includes('<ReturnSignatureView record={r} />'), 'History displays immutable event signature');

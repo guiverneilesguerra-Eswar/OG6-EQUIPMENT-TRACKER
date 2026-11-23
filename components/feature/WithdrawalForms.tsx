@@ -17,7 +17,8 @@ export function WithdrawalForms({ model: m }: Props) {
   const receiptAsset = receipt ? m.asset(receipt.assetId) : undefined;
   const returningOpen = Boolean(w) || m.batchReturn;
   const title = receipt ? 'TRANSACTION & RECEIPTS' : returningOpen ? m.returnReviewing ? 'CONFIRM EQUIPMENT RETURN' : m.batchReturn ? 'BATCH RETURN' : 'RETURN EQUIPMENT' : m.reviewing ? 'CONFIRM WITHDRAWAL' : 'NEW EQUIPMENT WITHDRAWAL';
-  return <FormModal visible={m.open || returningOpen || Boolean(receipt)} onClose={m.closeDialog} title={title} busyOverride={m.working}>
+  return <FormModal visible={m.open || returningOpen || Boolean(receipt)} onClose={m.closeDialog} title={title} busyOverride={m.working} interactionLocked={m.signatureInteraction}>
+    <ErrorText message={m.draftPersistenceError} />
     {receipt ? <>
       <Text selectable style={[styles.label, { color: c.primary }]}>{m.receiptIsBatchReturn ? 'BATCH RETURN' : 'REFERENCE'} · {m.receiptIsBatchReturn ? m.receiptReturnReference : receipt.reference || receipt.id}</Text>
       {m.receiptIsBatchReturn ? <Text style={[styles.helper, { color: c.subtle }]}>Returned items from multiple withdrawal transactions. Original personnel and dates are shown with each item.</Text> : <Text style={[styles.helper, { color: c.text }]}>Releaser: {receipt.releaser}{'\n'}Receiver: {receipt.receiver}{'\n'}Withdrawn: {formatDate(receipt.withdrawalAt)}{'\n'}Expected return: {formatDate(receipt.dueAt)}{'\n'}Remarks: {receipt.notes || '—'}</Text>}
@@ -48,14 +49,16 @@ export function WithdrawalForms({ model: m }: Props) {
       {m.returnReviewing ? <>
         <Text style={[styles.helper, { color: c.text }]}>Returning: {m.returning}{'\n'}Receiving: {m.receiving}{'\n'}Condition: {m.condition}{'\n'}Remarks: {m.remarks || '—'}</Text>
         <SignaturePad receiver={m.receiving} label="Receiving personnel signature" nameLabel="receiving personnel" value={m.receivingSignature} onChange={() => {}} onSave={() => {}} saved readOnly />
+        {m.releasingSignature.length ? <SignaturePad receiver={m.returning} label="Releaser signature at return" nameLabel="returning personnel" value={m.releasingSignature} onChange={() => {}} onSave={() => {}} saved readOnly /> : null}
         <Text style={[styles.helper, { color: c.subtle }]}>This signature will be saved with this return event and its selected quantities only.</Text>
         <ErrorText message={m.returnError} />
         <Button title="Confirm return" icon="return-down-back-outline" loading={busy} onPress={() => void m.confirmReturn()} />
         <Button title="Back to edit return" secondary disabled={busy} onPress={() => m.setReturnReviewing(false)} />
       </> : <>
-        <NameField label="Returning personnel *" role="releasers" value={m.returning} onChangeText={m.setReturning} />
+        <NameField label="Returning personnel / releaser *" role="releasers" value={m.returning} onChangeText={m.setReturning} />
+        <SignaturePad receiver={m.returning} label="Releaser signature at return (optional)" nameLabel="returning personnel" value={m.releasingSignature} onChange={m.setReleasingSignature} saved={m.releasingSignatureSaved} onSave={() => m.setReleasingSignatureSaved(true)} disabled={busy} expandable onInteractionChange={m.setSignatureInteractionLocked} />
         <NameField label="Receiving personnel *" role="receivers" value={m.receiving} onChangeText={m.setReceiving} />
-        <SignaturePad receiver={m.receiving} label="Receiving personnel signature *" nameLabel="receiving personnel" value={m.receivingSignature} onChange={m.setReceivingSignature} saved={m.receivingSignatureSaved} onSave={() => m.setReceivingSignatureSaved(true)} disabled={busy} expandable />
+        <SignaturePad receiver={m.receiving} label="Receiving personnel signature *" nameLabel="receiving personnel" value={m.receivingSignature} onChange={m.setReceivingSignature} saved={m.receivingSignatureSaved} onSave={() => m.setReceivingSignatureSaved(true)} disabled={busy} expandable onInteractionChange={m.setSignatureInteractionLocked} />
         <Text style={[styles.section, { color: c.text }]}>EQUIPMENT CONDITION *</Text>
         <View style={styles.returnActions}>{m.equipmentConditions.map(option => <Pressable key={option} accessibilityRole="radio" accessibilityLabel={`Equipment condition: ${option}`} accessibilityState={{ selected: m.condition === option, disabled: busy }} disabled={busy} onPress={() => m.setCondition(option)} style={({ pressed }) => [styles.conditionChoice, { borderColor: m.condition === option ? c.borderBright : c.border, backgroundColor: m.condition === option ? c.action : c.surfaceAlt, opacity: busy ? 0.45 : pressed ? 0.65 : 1 }]}><Text style={[styles.helper, styles.conditionText, { color: m.condition === option ? c.onAction : c.text }]}>{option}</Text></Pressable>)}</View>
         <Text style={[styles.helper, { color: c.subtle }]}>Selected condition: {m.condition || 'Choose an option'}. Applies to all items in this return; record separate returns for different conditions.</Text>
@@ -117,7 +120,7 @@ export function WithdrawalForms({ model: m }: Props) {
       <View style={[styles.divider, { backgroundColor: c.border }]} />
       <NameField label="Releaser *" role="releasers" value={m.releaser} onChangeText={m.setReleaser} />
       <NameField label="Receiver *" role="receivers" value={m.receiver} onChangeText={m.setReceiver} />
-      <SignaturePad receiver={m.receiver} value={m.signature} onChange={m.setSignature} saved={m.saved} onSave={() => m.setSaved(true)} />
+      <SignaturePad receiver={m.receiver} value={m.signature} onChange={m.setSignature} saved={m.saved} onSave={() => m.setSaved(true)} disabled={busy} expandable onInteractionChange={m.setSignatureInteractionLocked} />
       <DateField label="Withdrawal date & time *" value={m.withdrawalAt} onChange={m.setWithdrawalAt} />
       <DateField label="Expected return date *" value={m.dueAt} onChange={m.setDueAt} />
       <Field label="Remarks / additional notes" value={m.notes} onChangeText={m.setNotes} multiline placeholder="Condition, intended location, or special instructions" editable={!busy} />

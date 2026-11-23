@@ -4,7 +4,7 @@ import { formatDate } from './tracker';
 import type { ReceiptFile, ReceiptKind } from './receipts';
 import { getTransactionReceiptModel } from './withdrawalTransactions';
 import { remainingQuantity } from './movements';
-import { getReturnSignatureDetails, returnSignatureEntries } from './returnSignatures';
+import { getReturnSignatureBlocks, returnSignatureEntries } from './returnSignatures';
 import { createSingleA4Document } from './singleA4Document';
 import { createReceiptTextDocument } from './receiptText';
 import type { A4Block, A4Signature } from './singleA4Document';
@@ -45,10 +45,9 @@ export function transactionReceiptContent(data: TrackerData, withdrawal: Withdra
   blocks.push({ kind: 'signatures', entries: withdrawalSignatures });
   if (kind === 'return') {
     blocks.push({ kind: 'text', text: 'Original withdrawal signatures above; separate return acknowledgement below.' });
-    const returnSignatures: A4Signature[] = returnSignatureEntries(returns).map(event => {
-      const details = getReturnSignatureDetails(event);
+    const returnSignatures: A4Signature[] = returnSignatureEntries(returns).flatMap(event => getReturnSignatureBlocks(event).map(details => {
       return { label: details.label.toUpperCase(), person: details.person, signature: details.signature, note: `${event.reference} | ${formatDate(event.at)}${details.signature.some(stroke => stroke.length > 2) ? '' : `\n${details.missing}`}` };
-    });
+    }));
     blocks.push({ kind: 'signatures', entries: returnSignatures });
   }
   return { model, title, blocks };

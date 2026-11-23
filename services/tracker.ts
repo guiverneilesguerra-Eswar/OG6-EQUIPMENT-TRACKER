@@ -17,6 +17,8 @@ export interface Withdrawal {
   returnSignature?: Signature;
   /** Latest receiving-personnel signature; immutable copies are retained per return event. */
   receivingSignature?: Signature;
+  /** Returning personnel acknowledgement captured separately from historical returnSignature. */
+  releasingSignature?: Signature;
   deletedAt?: string; alarmAcknowledgedAt?: string;
   batchId?: string; reference?: string; quantity?: number; returnedQuantity?: number;
   equipmentSnapshot?: { name: string; serial: string; description: string };
