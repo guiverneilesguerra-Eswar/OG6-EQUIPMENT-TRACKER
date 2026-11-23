@@ -5,10 +5,10 @@ Deno.test('receiving signature views share one controller and parent save state'
   const [pad, hook, form] = await Promise.all([source('../components/feature/SignaturePad.tsx'), source('../hooks/useSignatureCanvas.ts'), source('../components/feature/WithdrawalForms.tsx')]);
   check((pad.match(/useSignatureCanvas\(/g) || []).length === 1, 'Do not fork drawing state into separate canvases');
   check(pad.includes('canvas(false)') && pad.includes('canvas(true)') && pad.includes('m.shown.map'), 'Both views render the same strokes');
-  check(pad.includes('onPress={onSave}') && !hook.includes('setSaved'), 'Both views share the parent saved flag');
+  check(pad.includes('m.save(onSave)') && !hook.includes('setSaved'), 'Both views save through the shared controller and parent saved flag');
   const toggle = hook.split('const toggleExpanded =')[1]?.split('const clear =')[0] || '';
   check(toggle.includes('setExpanded') && !toggle.includes('onChange') && !toggle.includes('strokes.current = []'), 'Switching alone cannot erase or invalidate a signature');
-  check(hook.includes('if (!active.current) return') && hook.includes('signaturePoint('), 'Only actual ink edits emit changes; coordinates are canonical');
+  check(hook.includes('endSignatureStroke(session.current, id)') && hook.includes('containedSignaturePoint(') && hook.includes('ownUpdates.current.has(input.value)'), 'Only completed ink edits emit changes; stale echoes cannot overwrite canonical strokes');
   check(pad.includes('onRequestClose={m.toggleExpanded}') && pad.includes('SafeAreaView'), 'Device back and safe areas are supported');
   check(form.includes('disabled={busy} expandable') && form.includes('saved={m.receivingSignatureSaved}'), 'Receiving signatures expose expansion and retain explicit save state');
 });
